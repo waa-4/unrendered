@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#08090d" />
+  <title>Unrendered</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app">
+    <section id="homeScreen" class="screen active">
+      <div class="noise"></div>
+      <div class="menu-card">
+        <p class="eyebrow">BUILD 0.0.3 // probably stable</p>
+        <h1>UNRENDERED</h1>
+        <p class="subtitle">A tower defence game held together by rectangles, bad ideas, and your sprites.</p>
+        <div class="menu-actions">
+          <button id="playBtn" class="big-btn">PLAY</button>
+          <button id="howBtn" class="ghost-btn">HOW TO PLAY</button>
+        </div>
+        <p class="tiny">No frameworks. No loading screen. GitHub Pages ready.</p>
+      </div>
+    </section>
+
+    <section id="levelsScreen" class="screen">
+      <header class="screen-header">
+        <button class="back-btn" data-back="home">← HOME</button>
+        <div>
+          <p class="eyebrow">SELECT A PROBLEM</p>
+          <h2>LEVEL SELECTOR</h2>
+        </div>
+      </header>
+      <div id="levelGrid" class="level-grid"></div>
+    </section>
+
+    <section id="helpScreen" class="screen">
+      <header class="screen-header">
+        <button class="back-btn" data-back="home">← HOME</button>
+        <div><p class="eyebrow">DOCUMENTATION // suspiciously short</p><h2>HOW TO PLAY</h2></div>
+      </header>
+      <div class="help-card">
+        <p>Choose a tower at the bottom, then click an empty spot away from the enemy path. Start waves and stop the red things from reaching the end.</p>
+        <p><b>PING</b> fires quickly. <b>CRASH</b> hits an area. <b>NULL</b> is slow but hits hard and slows enemies.</p>
+        <p>Everything about each stage lives in <code>levels.js</code>, so adding more levels later is intentionally easy.</p>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen game-screen">
+      <div class="game-topbar">
+        <button id="exitGameBtn" class="back-btn">← LEVELS</button>
+        <div class="level-title-wrap"><span id="levelNumber">01</span><strong id="levelName">Level</strong></div>
+        <div class="stats">
+          <span>HP <b id="hpText">20</b></span>
+          <span>$ <b id="cashText">0</b></span>
+          <span>WAVE <b id="waveText">0/0</b></span>
+        </div>
+      </div>
+
+      <div id="gameWrap" class="game-wrap">
+        <canvas id="gameCanvas" width="960" height="600"></canvas>
+        <div id="toast" class="toast"></div>
+        <div id="resultOverlay" class="result-overlay hidden">
+          <div class="result-card">
+            <p class="eyebrow" id="resultEyebrow">RESULT</p>
+            <h2 id="resultTitle">YOU WIN</h2>
+            <p id="resultText"></p>
+            <div class="result-actions">
+              <button id="retryBtn" class="big-btn">RETRY</button>
+              <button id="resultLevelsBtn" class="ghost-btn">LEVELS</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <div id="towerButtons" class="tower-buttons"></div>
+        <button id="waveBtn" class="wave-btn">START WAVE</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="levels.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
