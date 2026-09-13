@@ -12,7 +12,7 @@
     <section id="homeScreen" class="screen active">
       <div class="noise"></div>
       <div class="menu-card">
-        <p class="eyebrow">BUILD 0.0.4 // rendering is optional</p>
+        <p class="eyebrow">BUILD 0.0.5 // rendering is optional</p>
         <h1>UNRENDERED</h1>
         <p class="subtitle">A chaotic tower defence game made out of suspicious geometry and your original backgrounded sprites.</p>
         <div class="menu-actions">
@@ -38,9 +38,9 @@
         <div><p class="eyebrow">DOCUMENTATION // suspiciously short</p><h2>HOW TO PLAY</h2></div>
       </header>
       <div class="help-card">
-        <p>Pick a tower, click an empty spot away from the enemy path, then start a wave. Stop the red problem from reaching the exit.</p>
+        <p>Pick a tower and place at least 2 units. The READY! button unlocks once you have 2, and you only press it once: every later wave starts automatically after a 3-second breather.</p>
         <p><b>PING</b> fires fast. <b>CRASH</b> splashes. <b>NULL</b> slows and hits hard. <b>ALONEWOOD</b> covers a huge area but does tiny chip damage. <b>BLUESCREEN</b> charges for 7 seconds, then fires a piercing railgun laser.</p>
-        <p>The battlefield now scales to whatever space your browser has, so the title, arena, and controls should stay on-screen together.</p>
+        <p>The battlefield keeps its original 960×600 shape while scaling down to fit your browser. It resizes without stretching or squishing the playfield.</p>
         <p>Built-in stages are in <code>levels.js</code>. The Level Designer can make a quick path and test it without editing code.</p>
       </div>
     </section>
@@ -103,7 +103,7 @@
 
       <div class="control-panel">
         <div id="towerButtons" class="tower-buttons"></div>
-        <button id="waveBtn" class="wave-btn">START WAVE</button>
+        <button id="waveBtn" class="wave-btn" disabled>READY!</button>
       </div>
     </section>
   </main>

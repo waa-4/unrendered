@@ -13,3 +13,9 @@ Static GitHub Pages-ready tower defence game. Upload the contents of this folder
 - The three built-in stages remain in `levels.js`.
 
 No external libraries or servers are required.
+
+
+## Build 0.0.5
+- READY! unlocks after 2 towers; press once, then waves advance automatically with 3-second pauses.
+- Arena scales proportionally and never stretches the 960x600 playfield.
+- Added Rusher and Tanker enemy sprites/types. In levels.js use `type: 'rusher'` or `type: 'tanker'` on a wave.

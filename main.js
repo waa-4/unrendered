@@ -22,7 +22,8 @@
   const images = {};
   const imageFiles = {
     ping:'assets/ping.png', crash:'assets/crash.png', null:'assets/null.png',
-    alonewood:'assets/alonewood.png', bluescreen:'assets/bluescreen.png', enemy:'assets/enemy.png'
+    alonewood:'assets/alonewood.png', bluescreen:'assets/bluescreen.png', enemy:'assets/enemy.png',
+    tanker:'assets/enemytanker.png', rusher:'assets/enemyrusher.png'
   };
   Object.entries(imageFiles).forEach(([key,src]) => { const im = new Image(); im.src = src; images[key] = im; });
 
@@ -126,11 +127,11 @@
     state = {
       levelIndex:index, lvl, cash:lvl.startCash, hp:lvl.baseHP, wave:-1, waveRunning:false,
       spawnLeft:0, spawnTimer:0, enemies:[], towers:[], bullets:[], particles:[], floaters:[], shockwaves:[], lasers:[],
-      elapsed:0, ended:false, pointer:{x:-999,y:-999}, direct:!!directLevel
+      elapsed:0, ended:false, autoStarted:false, intermission:0, pointer:{x:-999,y:-999}, direct:!!directLevel
     };
     $('#levelNumber').textContent = directLevel ? '??' : String(index+1).padStart(2,'0');
     $('#levelName').textContent = lvl.name; $('#resultOverlay').classList.add('hidden');
-    showScreen('gameScreen'); makeTowerButtons(); syncHud(); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop);
+    showScreen('gameScreen'); makeTowerButtons(); syncHud(); requestAnimationFrame(fitArena); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop);
     toastMsg('CLICK EMPTY SPACE TO PLACE A TOWER',1600);
   }
 
@@ -138,10 +139,14 @@
     if (!state) return;
     $('#hpText').textContent=Math.max(0,Math.ceil(state.hp)); $('#cashText').textContent=Math.floor(state.cash);
     $('#waveText').textContent=`${Math.max(0,state.wave+1)}/${state.lvl.waves.length}`;
-    waveBtn.disabled=state.waveRunning||state.ended||state.wave>=state.lvl.waves.length-1;
-    waveBtn.classList.toggle('ready',!waveBtn.disabled);
-    if(state.wave>=state.lvl.waves.length-1&&!state.waveRunning) waveBtn.textContent='NO MORE WAVES';
-    else if(state.waveRunning) waveBtn.textContent='WAVE RUNNING'; else waveBtn.textContent=`START WAVE ${state.wave+2}`;
+    const canReady=!state.autoStarted&&!state.ended&&state.towers.length>=2;
+    waveBtn.disabled=!canReady;
+    waveBtn.classList.toggle('ready',canReady);
+    if(state.ended) waveBtn.textContent='SESSION ENDED';
+    else if(!state.autoStarted) { waveBtn.textContent='READY!'; waveBtn.title=state.towers.length<2?'Place at least 2 units first.':'Start automatic waves.'; }
+    else if(state.intermission>0) waveBtn.textContent=`NEXT WAVE IN ${state.intermission.toFixed(1)}s`;
+    else if(state.waveRunning) waveBtn.textContent=`AUTO // WAVE ${state.wave+1}`;
+    else waveBtn.textContent='AUTO WAVES ON';
   }
 
   function pathPixels() { return state.lvl.path.map(([x,y])=>({x:x*WORLD_W,y:y*WORLD_H})); }
@@ -157,19 +162,30 @@
 
   function startWave() {
     ensureAudio();
+    if(!state||state.autoStarted||state.ended||state.towers.length<2)return;
+    state.autoStarted=true;
+    beginWave();
+  }
+
+  function beginWave() {
     if(!state||state.waveRunning||state.ended||state.wave>=state.lvl.waves.length-1)return;
+    state.intermission=0;
     state.wave++; const w=state.lvl.waves[state.wave]; state.spawnLeft=w.count; state.spawnTimer=0; state.waveRunning=true; syncHud();
     tone(w.boss?95:260,.08,.012,'square',w.boss?55:190);
-    toastMsg(w.boss?'BOSS OBJECT HAS ENTERED THE DOCUMENT':`WAVE ${state.wave+1} // probably fine`,1300);
+    toastMsg(w.boss?'BOSS OBJECT HAS ENTERED THE DOCUMENT':`WAVE ${state.wave+1} // AUTO DEPLOY`,1300);
   }
 
   function spawnEnemy(w) {
-    const pos=posOnPath(0); state.enemies.push({x:pos.x,y:pos.y,progress:0,hp:w.hp,maxHp:w.hp,speed:w.speed,baseSpeed:w.speed,reward:w.reward,scale:w.scale||1,boss:!!w.boss,slowTimer:0,flash:0,dead:false});
-    state.shockwaves.push({x:pos.x,y:pos.y,r:5,max:42,life:.25,color:'#f0222b'});
+    const pos=posOnPath(0), type=w.type||'enemy';
+    const mods=type==='tanker'?{hp:2.15,speed:.62,reward:1.5,scale:1.15}:type==='rusher'?{hp:.62,speed:1.7,reward:.9,scale:.9}:{hp:1,speed:1,reward:1,scale:1};
+    const hp=w.hp*mods.hp, speed=w.speed*mods.speed;
+    state.enemies.push({x:pos.x,y:pos.y,progress:0,hp,maxHp:hp,speed,baseSpeed:speed,reward:w.reward*mods.reward,scale:(w.scale||1)*mods.scale,boss:!!w.boss,type,slowTimer:0,flash:0,dead:false});
+    state.shockwaves.push({x:pos.x,y:pos.y,r:5,max:type==='tanker'?58:42,life:.25,color:type==='rusher'?'#ff4b55':'#f0222b'});
   }
 
   function update(dt) {
     if(!state||state.ended)return; state.elapsed+=dt;
+    if(state.autoStarted&&state.intermission>0&&!state.waveRunning){state.intermission=Math.max(0,state.intermission-dt);syncHud();if(state.intermission<=0)beginWave();}
     if(state.waveRunning){const w=state.lvl.waves[state.wave];state.spawnTimer-=dt;while(state.spawnLeft>0&&state.spawnTimer<=0){spawnEnemy(w);state.spawnLeft--;state.spawnTimer+=w.gap;}}
     const {total}=pathLengthData();
     for(const e of state.enemies){
@@ -193,7 +209,7 @@
     for(const s of state.shockwaves){s.life-=dt;s.r+=(s.max-s.r)*Math.min(1,dt*12);}
     for(const l of state.lasers)l.life-=dt;
     state.enemies=state.enemies.filter(e=>!e.dead);state.bullets=state.bullets.filter(b=>!b.dead);state.particles=state.particles.filter(p=>p.life>0);state.floaters=state.floaters.filter(f=>f.life>0);state.shockwaves=state.shockwaves.filter(s=>s.life>0);state.lasers=state.lasers.filter(l=>l.life>0);
-    if(state.waveRunning&&state.spawnLeft===0&&state.enemies.length===0){state.waveRunning=false;if(state.wave===state.lvl.waves.length-1)finish(true);else{state.cash+=35+state.wave*10;toastMsg('WAVE CLEARED // BONUS CASH');tone(440,.09,.009,'sine',650);syncHud();}}
+    if(state.waveRunning&&state.spawnLeft===0&&state.enemies.length===0){state.waveRunning=false;if(state.wave===state.lvl.waves.length-1)finish(true);else{state.cash+=35+state.wave*10;state.intermission=3;toastMsg('WAVE CLEARED // NEXT WAVE IN 3');tone(440,.09,.009,'sine',650);syncHud();}}
     shake*=Math.pow(.025,dt);
   }
 
@@ -231,11 +247,13 @@
     if(Math.sin(state.elapsed*2.4)>0.992){ctx.fillStyle='rgba(255,255,255,.07)';const y=Math.random()*H;ctx.fillRect(0,y,W,2+Math.random()*8);const xx=Math.random()*W;ctx.fillStyle='rgba(20,130,255,.08)';ctx.fillRect(xx,0,2+Math.random()*5,H)}ctx.restore();
   }
 
-  function drawSprite(type,x,y,size){const im=images[type];if(im&&im.complete&&im.naturalWidth){ctx.imageSmoothingEnabled=true;ctx.drawImage(im,x-size/2,y-size/2,size,size)}else{ctx.strokeStyle='#0aa1e8';ctx.strokeRect(x-size/2,y-size/2,size,size)}}
+  function drawImageContained(im,x,y,maxW,maxH){const ar=im.naturalWidth/Math.max(1,im.naturalHeight);let w=maxW,h=w/ar;if(h>maxH){h=maxH;w=h*ar}ctx.drawImage(im,x-w/2,y-h/2,w,h);}
+  function drawSprite(type,x,y,size){const im=images[type];if(im&&im.complete&&im.naturalWidth){ctx.imageSmoothingEnabled=true;drawImageContained(im,x,y,size,size)}else{ctx.strokeStyle='#0aa1e8';ctx.strokeRect(x-size/2,y-size/2,size,size)}}
   function drawTower(t){const def=TOWERS[t.type];ctx.save();ctx.translate(t.x,t.y);ctx.fillStyle=t.type==='bluescreen'?'rgba(70,90,255,.14)':t.type==='alonewood'?'rgba(190,120,75,.12)':'rgba(255,255,255,.07)';ctx.beginPath();ctx.arc(0,0,31,0,Math.PI*2);ctx.fill();drawSprite(t.type,0,0,56);ctx.strokeStyle='rgba(255,255,255,.18)';ctx.strokeRect(-28,-28,56,56);ctx.fillStyle='#d7dbe6';ctx.font='bold 9px Arial';ctx.textAlign='center';ctx.fillText(def.name,0,39);if(def.rail){const charge=1-Math.max(0,t.cd)/def.rate;ctx.fillStyle='#111827';ctx.fillRect(-28,43,56,4);ctx.fillStyle='#56c9ff';ctx.fillRect(-28,43,56*Math.max(0,Math.min(1,charge)),4)}ctx.restore();}
-  function drawEnemy(e){const s=54*e.scale;ctx.save();ctx.translate(e.x,e.y);if(e.flash){ctx.globalAlpha=.55;ctx.fillStyle='#fff';ctx.fillRect(-s/2,-s/2,s,s);ctx.globalAlpha=1}const im=images.enemy;if(im&&im.complete&&im.naturalWidth)ctx.drawImage(im,-s/2,-s/2,s,s);else{ctx.strokeStyle='#f0222b';ctx.strokeRect(-s/2,-s/2,s,s)}const w=Math.max(34,s*.9);ctx.fillStyle='#25090b';ctx.fillRect(-w/2,-s/2-10,w,5);ctx.fillStyle=e.boss?'#ffbd6a':'#f0222b';ctx.fillRect(-w/2,-s/2-10,w*Math.max(0,e.hp/e.maxHp),5);if(e.slowTimer>0){ctx.strokeStyle='#b37cff';ctx.beginPath();ctx.arc(0,0,s*.42,0,Math.PI*2);ctx.stroke()}ctx.restore();}
+  function drawEnemy(e){const s=54*e.scale;ctx.save();ctx.translate(e.x,e.y);if(e.flash){ctx.globalAlpha=.55;ctx.fillStyle='#fff';ctx.fillRect(-s/2,-s/2,s,s);ctx.globalAlpha=1}const im=images[e.type]||images.enemy;if(im&&im.complete&&im.naturalWidth)drawImageContained(im,0,0,s,s);else{ctx.strokeStyle='#f0222b';ctx.strokeRect(-s/2,-s/2,s,s)}const w=Math.max(34,s*.9);ctx.fillStyle='#25090b';ctx.fillRect(-w/2,-s/2-10,w,5);ctx.fillStyle=e.boss?'#ffbd6a':e.type==='tanker'?'#ff7c86':e.type==='rusher'?'#ff2835':'#f0222b';ctx.fillRect(-w/2,-s/2-10,w*Math.max(0,e.hp/e.maxHp),5);if(e.slowTimer>0){ctx.strokeStyle='#b37cff';ctx.beginPath();ctx.arc(0,0,s*.42,0,Math.PI*2);ctx.stroke()}ctx.restore();}
 
   function finish(win){if(!state||state.ended)return;state.ended=true;state.waveRunning=false;syncHud();$('#resultEyebrow').textContent=win?'RENDER COMPLETE':'FATAL PATH EXCEPTION';$('#resultTitle').textContent=win?'YOU WIN':'BASE DELETED';$('#resultText').textContent=win?'The geometry survived. Somehow.':'Too many red things reached the end of the line.';$('#resultOverlay').classList.remove('hidden');tone(win?520:70,.25,.015,win?'sine':'sawtooth',win?780:35);}
+  function fitArena(){const wrap=$('#gameWrap'),screen=$('#gameScreen'),top=$('.game-topbar'),controls=$('.control-panel');if(!wrap||!screen)return;const cs=getComputedStyle(screen),padX=parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight),padY=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom),gap=parseFloat(cs.rowGap||cs.gap)||0;const maxW=Math.max(240,innerWidth-padX),maxH=Math.max(150,innerHeight-padY-(top?.offsetHeight||0)-(controls?.offsetHeight||0)-gap*2);const w=Math.floor(Math.min(1200,maxW,maxH*(WORLD_W/WORLD_H)));wrap.style.width=w+'px';wrap.style.height=Math.floor(w*(WORLD_H/WORLD_W))+'px';}
   function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;update(dt);draw();if($('#gameScreen').classList.contains('active'))raf=requestAnimationFrame(loop);}
   function canvasPoint(ev,c=canvas){const r=c.getBoundingClientRect(),p=ev.touches?ev.touches[0]:ev;return{x:(p.clientX-r.left)/r.width*c.width,y:(p.clientY-r.top)/r.height*c.height};}
 
@@ -261,5 +279,6 @@
   canvas.addEventListener('pointermove',e=>{if(state)state.pointer=canvasPoint(e)});canvas.addEventListener('pointerleave',()=>{if(state)state.pointer={x:-999,y:-999}});canvas.addEventListener('pointerdown',e=>{if(!state||state.ended)return;placeTower(canvasPoint(e).x,canvasPoint(e).y)});
   $('#playBtn').onclick=()=>{ensureAudio();renderLevelCards();showScreen('levelsScreen')};$('#designerBtn').onclick=()=>{ensureAudio();showScreen('designerScreen');drawDesigner()};$('#howBtn').onclick=()=>showScreen('helpScreen');$$('[data-back="home"]').forEach(b=>b.onclick=()=>showScreen('homeScreen'));$('#exitGameBtn').onclick=()=>{renderLevelCards();showScreen('levelsScreen')};$('#resultLevelsBtn').onclick=()=>{renderLevelCards();showScreen('levelsScreen')};$('#retryBtn').onclick=()=>state.direct?startLevel(-1,state.lvl):startLevel(state.levelIndex);waveBtn.onclick=startWave;
 
+  addEventListener('resize',fitArena);
   renderLevelCards();makeTowerButtons();drawDesigner();
 })();
