@@ -12,43 +12,51 @@
     <section id="homeScreen" class="screen active">
       <div class="noise"></div>
       <div class="menu-card">
-        <p class="eyebrow">BUILD 0.0.5 // rendering is optional</p>
+        <p class="eyebrow">BUILD 0.0.6</p>
         <h1>UNRENDERED</h1>
-        <p class="subtitle">A chaotic tower defence game made out of suspicious geometry and your original backgrounded sprites.</p>
+        <p class="subtitle">Tower defence with hand-drawn units and enemies.</p>
         <div class="menu-actions">
           <button id="playBtn" class="big-btn">PLAY</button>
+          <button id="endlessBtn" class="big-btn alt-btn">ENDLESS</button>
           <button id="designerBtn" class="ghost-btn">LEVEL DESIGNER</button>
           <button id="howBtn" class="ghost-btn">HOW TO PLAY</button>
         </div>
-        <p class="tiny">GitHub Pages ready // levels still live in <code>levels.js</code></p>
+        <p class="tiny">Levels are stored in <code>levels.js</code>.</p>
       </div>
     </section>
 
     <section id="levelsScreen" class="screen scroll-screen">
       <header class="screen-header">
         <button class="back-btn" data-back="home">← HOME</button>
-        <div><p class="eyebrow">SELECT A PROBLEM</p><h2>LEVEL SELECTOR</h2></div>
+        <div><p class="eyebrow">CHOOSE A WORLD AND LEVEL</p><h2>LEVEL SELECTOR</h2></div>
       </header>
-      <div id="levelGrid" class="level-grid"></div>
+      <div class="difficulty-box">
+        <span>DIFFICULTY</span>
+        <div id="difficultyButtons" class="difficulty-buttons"></div>
+        <small id="difficultyInfo">Enemy stats: 100%</small>
+      </div>
+      <div id="worldList" class="world-list"></div>
     </section>
 
     <section id="helpScreen" class="screen scroll-screen">
       <header class="screen-header">
         <button class="back-btn" data-back="home">← HOME</button>
-        <div><p class="eyebrow">DOCUMENTATION // suspiciously short</p><h2>HOW TO PLAY</h2></div>
+        <div><p class="eyebrow">CONTROLS</p><h2>HOW TO PLAY</h2></div>
       </header>
       <div class="help-card">
-        <p>Pick a tower and place at least 2 units. The READY! button unlocks once you have 2, and you only press it once: every later wave starts automatically after a 3-second breather.</p>
+        <p>Pick a tower and place at least 2 units. READY! unlocks after the second unit is placed. Press it once; later waves start automatically after a 3-second break.</p>
         <p><b>PING</b> fires fast. <b>CRASH</b> splashes. <b>NULL</b> slows and hits hard. <b>ALONEWOOD</b> covers a huge area but does tiny chip damage. <b>BLUESCREEN</b> charges for 7 seconds, then fires a piercing railgun laser.</p>
-        <p>The battlefield keeps its original 960×600 shape while scaling down to fit your browser. It resizes without stretching or squishing the playfield.</p>
-        <p>Built-in stages are in <code>levels.js</code>. The Level Designer can make a quick path and test it without editing code.</p>
+        <p>The battlefield keeps a 960×600 aspect ratio and scales to fit the browser without stretching.</p>
+        <p>Worlds and levels are stored in <code>levels.js</code>. The Level Designer can create and test simple custom levels.</p>
+        <p>Difficulty changes enemy HP and speed. Easy is 50%, Normal 100%, Hard 150%, Insane 200%, Ultra 300%, and Nightmare rolls between 400% and 575% at the start of every level.</p>
+        <p>Endless picks a random built-in level, moves to another random level after each clear, and keeps going until you lose. It uses your last selected difficulty.</p>
       </div>
     </section>
 
     <section id="designerScreen" class="screen designer-screen">
       <header class="screen-header compact-header">
         <button class="back-btn" data-back="home">← HOME</button>
-        <div><p class="eyebrow">VERY LEGAL MAP SOFTWARE</p><h2>LEVEL DESIGNER</h2></div>
+        <div><p class="eyebrow">CUSTOM LEVELS</p><h2>LEVEL DESIGNER</h2></div>
       </header>
       <div class="designer-layout">
         <div class="designer-canvas-wrap">
@@ -56,7 +64,7 @@
           <div class="designer-hint">Click to add path points. Start near the left edge and finish near the right.</div>
         </div>
         <aside class="designer-panel">
-          <label>NAME<input id="designName" value="Custom Disaster" maxlength="32"></label>
+          <label>NAME<input id="designName" value="Custom Level" maxlength="32"></label>
           <label>START CASH<input id="designCash" type="number" min="50" max="9999" value="300"></label>
           <label>BASE HP<input id="designHP" type="number" min="1" max="999" value="20"></label>
           <label>WAVES<input id="designWaves" type="number" min="1" max="12" value="5"></label>
@@ -81,6 +89,8 @@
           <span>HP <b id="hpText">20</b></span>
           <span>$ <b id="cashText">0</b></span>
           <span>WAVE <b id="waveText">0/0</b></span>
+          <span>DIFF <b id="difficultyText">NORMAL 100%</b></span>
+          <span id="endlessStat" class="hidden-stat">CLEARED <b id="endlessClearedText">0</b></span>
         </div>
       </div>
 

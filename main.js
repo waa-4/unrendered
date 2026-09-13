@@ -8,13 +8,14 @@
   const ctx = canvas.getContext('2d');
   const dCanvas = $('#designerCanvas');
   const dctx = dCanvas.getContext('2d');
-  const levelGrid = $('#levelGrid');
+  const worldList = $('#worldList');
+  const difficultyButtons = $('#difficultyButtons');
+  const difficultyInfo = $('#difficultyInfo');
   const towerButtons = $('#towerButtons');
   const waveBtn = $('#waveBtn');
   const toast = $('#toast');
 
-  // Keep a fixed logical game resolution and let CSS scale the arena to whatever
-  // room the browser has. This keeps tower ranges/gameplay identical on every screen.
+  // The game runs at a fixed logical resolution. CSS only scales the whole arena.
   const WORLD_W = 960, WORLD_H = 600;
   canvas.width = WORLD_W; canvas.height = WORLD_H;
   dCanvas.width = 960; dCanvas.height = 540;
@@ -28,11 +29,21 @@
   Object.entries(imageFiles).forEach(([key,src]) => { const im = new Image(); im.src = src; images[key] = im; });
 
   const TOWERS = {
-    ping:       { name:'PING',       cost:55,  range:128, rate:.27, damage:14, projectile:560, desc:'fast packets' },
+    ping:       { name:'PING',       cost:55,  range:128, rate:.27, damage:14, projectile:560, desc:'fast shots' },
     crash:      { name:'CRASH',      cost:100, range:148, rate:.92, damage:30, projectile:370, splash:55, desc:'area damage' },
     null:       { name:'NULL',       cost:140, range:170, rate:1.2, damage:66, projectile:420, slow:.62, desc:'heavy + slow' },
-    alonewood:  { name:'ALONEWOOD',  cost:125, range:285, rate:.18, damage:2.8, projectile:650, desc:'huge range / chip' },
+    alonewood:  { name:'ALONEWOOD',  cost:125, range:285, rate:.18, damage:2.8, projectile:650, desc:'wide range / chip damage' },
     bluescreen: { name:'BLUESCREEN', cost:260, range:360, rate:7.0, damage:235, rail:true, desc:'7s piercing railgun' }
+  };
+
+
+  const DIFFICULTIES = {
+    easy:      { name:'EASY',      mult:.50 },
+    normal:    { name:'NORMAL',    mult:1.00 },
+    hard:      { name:'HARD',      mult:1.50 },
+    insane:    { name:'INSANE',    mult:2.00 },
+    ultra:     { name:'ULTRA',     mult:3.00 },
+    nightmare: { name:'NIGHTMARE', min:4.00, max:5.75 }
   };
 
   let state = null;
@@ -43,6 +54,10 @@
   let audioCtx = null;
   let designerPath = [[-.03,.5],[.2,.5],[.45,.28],[.68,.7],[1.03,.52]];
   let customLevels = loadCustomLevels();
+  let selectedDifficulty = localStorage.getItem('unrendered_difficulty') || 'normal';
+  if (!DIFFICULTIES[selectedDifficulty]) selectedDifficulty = 'normal';
+  let endlessSession = { active:false, cleared:0, lastIndex:-1 };
+  let endlessTimer = 0;
 
   function showScreen(id) {
     screens.forEach(s => s.classList.toggle('active', s.id === id));
@@ -91,20 +106,48 @@
     try { localStorage.setItem('unrendered_custom_levels', JSON.stringify(customLevels)); } catch (_) {}
   }
 
-  function renderLevelCards() {
-    levelGrid.innerHTML = '';
-    allLevels().forEach((lvl, i) => {
-      const card = document.createElement('article');
-      card.className = 'level-card' + (lvl.custom ? ' custom' : '');
-      const pts = lvl.path.map(p => `${Math.round(5+p[0]*90)},${Math.round(8+p[1]*72)}`).join(' ');
-      card.innerHTML = `
-        <div class="num">${String(i+1).padStart(2,'0')}</div>
-        <svg class="mini-path" viewBox="0 0 100 80" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${lvl.tint||'#0aa1e8'}" stroke-width="2.5" vector-effect="non-scaling-stroke" /></svg>
-        <h3>${escapeHtml(lvl.name)}</h3><p>${escapeHtml(lvl.description||'Custom geometry detected.')}</p>
-        <div class="meta">${lvl.waves.length} WAVES // ${lvl.baseHP} HP // $${lvl.startCash}${lvl.custom?' // CUSTOM':''}</div>`;
-      card.onclick = () => startLevel(i);
-      levelGrid.appendChild(card);
+  function renderDifficultyButtons() {
+    difficultyButtons.innerHTML = '';
+    Object.entries(DIFFICULTIES).forEach(([key,d]) => {
+      const b=document.createElement('button');
+      b.className='difficulty-btn'+(selectedDifficulty===key?' active':'');
+      b.textContent=d.name;
+      b.onclick=()=>{selectedDifficulty=key;localStorage.setItem('unrendered_difficulty',key);renderDifficultyButtons();};
+      difficultyButtons.appendChild(b);
     });
+    const d=DIFFICULTIES[selectedDifficulty];
+    difficultyInfo.textContent = selectedDifficulty==='nightmare' ? 'Enemy stats: random 400%–575% each level' : `Enemy stats: ${Math.round(d.mult*100)}%`;
+  }
+
+  function worldDefinitions() {
+    return Array.isArray(window.UNRENDERED_WORLDS) && window.UNRENDERED_WORLDS.length ? window.UNRENDERED_WORLDS : [{id:1,name:'World 1',description:'',levelCount:10}];
+  }
+
+  function renderLevelCards() {
+    worldList.innerHTML = '';
+    const levels=allLevels();
+    worldDefinitions().forEach(world=>{
+      const section=document.createElement('section'); section.className='world-section';
+      const built=levels.map((lvl,i)=>({lvl,i})).filter(x=>(x.lvl.world||1)===world.id && !x.lvl.custom);
+      section.innerHTML=`<div class="world-heading"><div><h3>${escapeHtml(world.name)}</h3><p>${escapeHtml(world.description||'')}</p></div><div class="world-progress">${built.length}/${world.levelCount||built.length} LEVELS</div></div>`;
+      const grid=document.createElement('div'); grid.className='level-grid';
+      built.forEach(({lvl,i},slot)=>grid.appendChild(makeLevelCard(lvl,i,slot+1)));
+      const total=Math.max(built.length,world.levelCount||built.length);
+      for(let slot=built.length;slot<total;slot++){
+        const card=document.createElement('article');card.className='level-card level-slot locked';card.innerHTML=`<div class="num">${String(slot+1).padStart(2,'0')}</div><h3>LEVEL ${slot+1}</h3><p>Not added yet.</p>`;grid.appendChild(card);
+      }
+      section.appendChild(grid); worldList.appendChild(section);
+    });
+    const custom=levels.map((lvl,i)=>({lvl,i})).filter(x=>x.lvl.custom);
+    if(custom.length){const section=document.createElement('section');section.className='world-section';section.innerHTML='<div class="world-heading"><div><h3>CUSTOM</h3><p>Saved in this browser.</p></div></div>';const grid=document.createElement('div');grid.className='level-grid';custom.forEach(({lvl,i},slot)=>grid.appendChild(makeLevelCard(lvl,i,slot+1)));section.appendChild(grid);worldList.appendChild(section);}
+    renderDifficultyButtons();
+  }
+
+  function makeLevelCard(lvl,index,number){
+    const card=document.createElement('article'); card.className='level-card'+(lvl.custom?' custom':'');
+    const pts=lvl.path.map(p=>`${Math.round(5+p[0]*90)},${Math.round(8+p[1]*72)}`).join(' ');
+    card.innerHTML=`<div class="num">${String(number).padStart(2,'0')}</div><svg class="mini-path" viewBox="0 0 100 80" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${lvl.tint||'#0aa1e8'}" stroke-width="2.5" vector-effect="non-scaling-stroke" /></svg><h3>${escapeHtml(lvl.name)}</h3><p>${escapeHtml(lvl.description||'Custom level.')}</p><div class="meta">${lvl.waves.length} WAVES // ${lvl.baseHP} HP // $${lvl.startCash}${lvl.custom?' // CUSTOM':''}</div>`;
+    card.onclick=()=>{endlessSession.active=false;startLevel(index)};return card;
   }
 
   function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -120,25 +163,34 @@
     });
   }
 
-  function startLevel(index, directLevel=null) {
+  function difficultyMultiplier() {
+    const d=DIFFICULTIES[selectedDifficulty];
+    return selectedDifficulty==='nightmare' ? 4 + Math.random()*1.75 : d.mult;
+  }
+
+  function startLevel(index, directLevel=null, forcedMult=null) {
     const levels = allLevels();
     const lvl = directLevel || levels[index];
     if (!lvl) return;
+    const diffMult=forcedMult ?? difficultyMultiplier();
     state = {
-      levelIndex:index, lvl, cash:lvl.startCash, hp:lvl.baseHP, wave:-1, waveRunning:false,
+      levelIndex:index, lvl, cash:lvl.startCash, hp:lvl.baseHP, wave:-1, waveRunning:false, difficulty:selectedDifficulty, difficultyMult:diffMult,
       spawnLeft:0, spawnTimer:0, enemies:[], towers:[], bullets:[], particles:[], floaters:[], shockwaves:[], lasers:[],
-      elapsed:0, ended:false, autoStarted:false, intermission:0, pointer:{x:-999,y:-999}, direct:!!directLevel
+      elapsed:0, ended:false, autoStarted:false, intermission:0, pointer:{x:-999,y:-999}, direct:!!directLevel, endless:endlessSession.active
     };
-    $('#levelNumber').textContent = directLevel ? '??' : String(index+1).padStart(2,'0');
-    $('#levelName').textContent = lvl.name; $('#resultOverlay').classList.add('hidden');
+    $('#levelNumber').textContent = directLevel ? '??' : String((lvl.id||index+1)).padStart(2,'0');
+    $('#levelName').textContent = endlessSession.active ? `ENDLESS // ${lvl.name}` : lvl.name; $('#resultOverlay').classList.add('hidden');
+    $('#endlessStat').classList.toggle('show',endlessSession.active); $('#endlessClearedText').textContent=endlessSession.cleared;
     showScreen('gameScreen'); makeTowerButtons(); syncHud(); requestAnimationFrame(fitArena); last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop);
-    toastMsg('CLICK EMPTY SPACE TO PLACE A TOWER',1600);
+    toastMsg('PLACE AT LEAST 2 UNITS',1400);
   }
 
   function syncHud() {
     if (!state) return;
     $('#hpText').textContent=Math.max(0,Math.ceil(state.hp)); $('#cashText').textContent=Math.floor(state.cash);
     $('#waveText').textContent=`${Math.max(0,state.wave+1)}/${state.lvl.waves.length}`;
+    $('#difficultyText').textContent=`${DIFFICULTIES[state.difficulty].name} ${Math.round(state.difficultyMult*100)}%`;
+    $('#endlessClearedText').textContent=endlessSession.cleared;
     const canReady=!state.autoStarted&&!state.ended&&state.towers.length>=2;
     waveBtn.disabled=!canReady;
     waveBtn.classList.toggle('ready',canReady);
@@ -172,13 +224,14 @@
     state.intermission=0;
     state.wave++; const w=state.lvl.waves[state.wave]; state.spawnLeft=w.count; state.spawnTimer=0; state.waveRunning=true; syncHud();
     tone(w.boss?95:260,.08,.012,'square',w.boss?55:190);
-    toastMsg(w.boss?'BOSS OBJECT HAS ENTERED THE DOCUMENT':`WAVE ${state.wave+1} // AUTO DEPLOY`,1300);
+    toastMsg(w.boss?'BOSS WAVE':`WAVE ${state.wave+1}`,900);
   }
 
   function spawnEnemy(w) {
     const pos=posOnPath(0), type=w.type||'enemy';
     const mods=type==='tanker'?{hp:2.15,speed:.62,reward:1.5,scale:1.15}:type==='rusher'?{hp:.62,speed:1.7,reward:.9,scale:.9}:{hp:1,speed:1,reward:1,scale:1};
-    const hp=w.hp*mods.hp, speed=w.speed*mods.speed;
+    const diff=state.difficultyMult;
+    const hp=w.hp*mods.hp*diff, speed=w.speed*mods.speed*diff;
     state.enemies.push({x:pos.x,y:pos.y,progress:0,hp,maxHp:hp,speed,baseSpeed:speed,reward:w.reward*mods.reward,scale:(w.scale||1)*mods.scale,boss:!!w.boss,type,slowTimer:0,flash:0,dead:false});
     state.shockwaves.push({x:pos.x,y:pos.y,r:5,max:type==='tanker'?58:42,life:.25,color:type==='rusher'?'#ff4b55':'#f0222b'});
   }
@@ -209,7 +262,7 @@
     for(const s of state.shockwaves){s.life-=dt;s.r+=(s.max-s.r)*Math.min(1,dt*12);}
     for(const l of state.lasers)l.life-=dt;
     state.enemies=state.enemies.filter(e=>!e.dead);state.bullets=state.bullets.filter(b=>!b.dead);state.particles=state.particles.filter(p=>p.life>0);state.floaters=state.floaters.filter(f=>f.life>0);state.shockwaves=state.shockwaves.filter(s=>s.life>0);state.lasers=state.lasers.filter(l=>l.life>0);
-    if(state.waveRunning&&state.spawnLeft===0&&state.enemies.length===0){state.waveRunning=false;if(state.wave===state.lvl.waves.length-1)finish(true);else{state.cash+=35+state.wave*10;state.intermission=3;toastMsg('WAVE CLEARED // NEXT WAVE IN 3');tone(440,.09,.009,'sine',650);syncHud();}}
+    if(state.waveRunning&&state.spawnLeft===0&&state.enemies.length===0){state.waveRunning=false;if(state.wave===state.lvl.waves.length-1)finish(true);else{state.cash+=35+state.wave*10;state.intermission=3;toastMsg('WAVE CLEARED // 3 SECOND BREAK');tone(440,.09,.009,'sine',650);syncHud();}}
     shake*=Math.pow(.025,dt);
   }
 
@@ -230,7 +283,7 @@
   function floater(x,y,text,color){state.floaters.push({x,y,text,color,life:.8});}
 
   function distanceToPath(x,y){const p=pathPixels();let min=Infinity;for(let i=1;i<p.length;i++){const a=p[i-1],b=p[i],vx=b.x-a.x,vy=b.y-a.y;const den=vx*vx+vy*vy||1;const t=Math.max(0,Math.min(1,((x-a.x)*vx+(y-a.y)*vy)/den));min=Math.min(min,Math.hypot(x-(a.x+vx*t),y-(a.y+vy*t)));}return min;}
-  function placeTower(x,y){ensureAudio();if(!state||state.ended)return;const def=TOWERS[selectedTower];if(state.cash<def.cost)return toastMsg('INSUFFICIENT RECTANGLE FUNDS');if(distanceToPath(x,y)<48)return toastMsg('TOO CLOSE TO THE RED PROBLEM');if(state.towers.some(t=>Math.hypot(t.x-x,t.y-y)<62))return toastMsg('TOWER COLLISION.EXE');if(x<32||x>WORLD_W-32||y<32||y>WORLD_H-32)return;state.cash-=def.cost;state.towers.push({x,y,type:selectedTower,cd:def.rail?def.rate:Math.random()*.12});burst(x,y,10,'place');state.shockwaves.push({x,y,r:5,max:40,life:.24,color:'#73dcff'});tone(330,.04,.008,'square',500);syncHud();}
+  function placeTower(x,y){ensureAudio();if(!state||state.ended)return;const def=TOWERS[selectedTower];if(state.cash<def.cost)return toastMsg('NOT ENOUGH CASH');if(distanceToPath(x,y)<48)return toastMsg('TOO CLOSE TO THE PATH');if(state.towers.some(t=>Math.hypot(t.x-x,t.y-y)<62))return toastMsg('TOO CLOSE TO ANOTHER UNIT');if(x<32||x>WORLD_W-32||y<32||y>WORLD_H-32)return;state.cash-=def.cost;state.towers.push({x,y,type:selectedTower,cd:def.rail?def.rate:Math.random()*.12});burst(x,y,10,'place');state.shockwaves.push({x,y,r:5,max:40,life:.24,color:'#73dcff'});tone(330,.04,.008,'square',500);syncHud();}
 
   function draw(){
     if(!state)return;const W=WORLD_W,H=WORLD_H;ctx.save();const sx=(Math.random()-.5)*shake,sy=(Math.random()-.5)*shake;ctx.translate(sx,sy);ctx.fillStyle='#080a0f';ctx.fillRect(-20,-20,W+40,H+40);
@@ -252,32 +305,45 @@
   function drawTower(t){const def=TOWERS[t.type];ctx.save();ctx.translate(t.x,t.y);ctx.fillStyle=t.type==='bluescreen'?'rgba(70,90,255,.14)':t.type==='alonewood'?'rgba(190,120,75,.12)':'rgba(255,255,255,.07)';ctx.beginPath();ctx.arc(0,0,31,0,Math.PI*2);ctx.fill();drawSprite(t.type,0,0,56);ctx.strokeStyle='rgba(255,255,255,.18)';ctx.strokeRect(-28,-28,56,56);ctx.fillStyle='#d7dbe6';ctx.font='bold 9px Arial';ctx.textAlign='center';ctx.fillText(def.name,0,39);if(def.rail){const charge=1-Math.max(0,t.cd)/def.rate;ctx.fillStyle='#111827';ctx.fillRect(-28,43,56,4);ctx.fillStyle='#56c9ff';ctx.fillRect(-28,43,56*Math.max(0,Math.min(1,charge)),4)}ctx.restore();}
   function drawEnemy(e){const s=54*e.scale;ctx.save();ctx.translate(e.x,e.y);if(e.flash){ctx.globalAlpha=.55;ctx.fillStyle='#fff';ctx.fillRect(-s/2,-s/2,s,s);ctx.globalAlpha=1}const im=images[e.type]||images.enemy;if(im&&im.complete&&im.naturalWidth)drawImageContained(im,0,0,s,s);else{ctx.strokeStyle='#f0222b';ctx.strokeRect(-s/2,-s/2,s,s)}const w=Math.max(34,s*.9);ctx.fillStyle='#25090b';ctx.fillRect(-w/2,-s/2-10,w,5);ctx.fillStyle=e.boss?'#ffbd6a':e.type==='tanker'?'#ff7c86':e.type==='rusher'?'#ff2835':'#f0222b';ctx.fillRect(-w/2,-s/2-10,w*Math.max(0,e.hp/e.maxHp),5);if(e.slowTimer>0){ctx.strokeStyle='#b37cff';ctx.beginPath();ctx.arc(0,0,s*.42,0,Math.PI*2);ctx.stroke()}ctx.restore();}
 
-  function finish(win){if(!state||state.ended)return;state.ended=true;state.waveRunning=false;syncHud();$('#resultEyebrow').textContent=win?'RENDER COMPLETE':'FATAL PATH EXCEPTION';$('#resultTitle').textContent=win?'YOU WIN':'BASE DELETED';$('#resultText').textContent=win?'The geometry survived. Somehow.':'Too many red things reached the end of the line.';$('#resultOverlay').classList.remove('hidden');tone(win?520:70,.25,.015,win?'sine':'sawtooth',win?780:35);}
+  function finish(win){
+    if(!state||state.ended)return;state.ended=true;state.waveRunning=false;syncHud();tone(win?520:70,.25,.015,win?'sine':'sawtooth',win?780:35);
+    if(win&&endlessSession.active){endlessSession.cleared++;$('#endlessClearedText').textContent=endlessSession.cleared;toastMsg(`LEVEL CLEARED // ${endlessSession.cleared} TOTAL`,1800);clearTimeout(endlessTimer);endlessTimer=setTimeout(startNextEndless,2200);return;}
+    $('#resultEyebrow').textContent=win?'LEVEL COMPLETE':'RUN OVER';$('#resultTitle').textContent=win?'LEVEL CLEARED':'DEFEAT';$('#resultText').textContent=win?'Level complete.':'The base ran out of HP.';$('#resultOverlay').classList.remove('hidden');
+  }
+
+  function startEndless(){
+    ensureAudio();endlessSession={active:true,cleared:0,lastIndex:-1};startNextEndless();
+  }
+  function startNextEndless(){
+    if(!endlessSession.active)return;const levels=UNRENDERED_LEVELS.filter(l=>!l.custom);if(!levels.length)return;
+    let pool=UNRENDERED_LEVELS.map((lvl,i)=>({lvl,i}));if(pool.length>1)pool=pool.filter(x=>x.i!==endlessSession.lastIndex);
+    const pick=pool[Math.floor(Math.random()*pool.length)];endlessSession.lastIndex=pick.i;startLevel(pick.i);
+  }
   function fitArena(){const wrap=$('#gameWrap'),screen=$('#gameScreen'),top=$('.game-topbar'),controls=$('.control-panel');if(!wrap||!screen)return;const cs=getComputedStyle(screen),padX=parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight),padY=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom),gap=parseFloat(cs.rowGap||cs.gap)||0;const maxW=Math.max(240,innerWidth-padX),maxH=Math.max(150,innerHeight-padY-(top?.offsetHeight||0)-(controls?.offsetHeight||0)-gap*2);const w=Math.floor(Math.min(1200,maxW,maxH*(WORLD_W/WORLD_H)));wrap.style.width=w+'px';wrap.style.height=Math.floor(w*(WORLD_H/WORLD_W))+'px';}
   function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;update(dt);draw();if($('#gameScreen').classList.contains('active'))raf=requestAnimationFrame(loop);}
   function canvasPoint(ev,c=canvas){const r=c.getBoundingClientRect(),p=ev.touches?ev.touches[0]:ev;return{x:(p.clientX-r.left)/r.width*c.width,y:(p.clientY-r.top)/r.height*c.height};}
 
   // ---- Simple level designer ----
   function makeDesignerLevel(){
-    const name=$('#designName').value.trim()||'Custom Disaster',cash=clampNum($('#designCash').value,50,9999,300),hp=clampNum($('#designHP').value,1,999,20),count=clampNum($('#designWaves').value,1,12,5),tint=$('#designTint').value||'#64e4ff';
+    const name=$('#designName').value.trim()||'Custom Level',cash=clampNum($('#designCash').value,50,9999,300),hp=clampNum($('#designHP').value,1,999,20),count=clampNum($('#designWaves').value,1,12,5),tint=$('#designTint').value||'#64e4ff';
     const path=designerPath.map(p=>[+p[0].toFixed(4),+p[1].toFixed(4)]); const waves=[];
     for(let i=0;i<count;i++){const boss=i===count-1;waves.push(boss?{count:1,hp:950+count*110,speed:.052,gap:1,reward:140,scale:1.7,boss:true}:{count:8+i*3,hp:44+i*25,speed:.072+i*.008,gap:Math.max(.28,.68-i*.065),reward:12+i*2});}
-    return{id:Date.now(),name,description:'Made in the built-in Level Designer.',tint,startCash:cash,baseHP:hp,rewardScale:1,path,waves,custom:true};
+    return{id:Date.now(),name,description:'Custom level.',tint,startCash:cash,baseHP:hp,rewardScale:1,path,waves,custom:true};
   }
   function clampNum(v,min,max,fallback){const n=Number(v);return Number.isFinite(n)?Math.max(min,Math.min(max,Math.round(n))):fallback;}
   function drawDesigner(){
     if(!$('#designerScreen').classList.contains('active'))return;const W=dCanvas.width,H=dCanvas.height;dctx.fillStyle='#090b11';dctx.fillRect(0,0,W,H);dctx.strokeStyle='rgba(255,255,255,.05)';dctx.lineWidth=1;for(let x=0;x<W;x+=48){dctx.beginPath();dctx.moveTo(x,0);dctx.lineTo(x,H);dctx.stroke()}for(let y=0;y<H;y+=48){dctx.beginPath();dctx.moveTo(0,y);dctx.lineTo(W,y);dctx.stroke()}
     const tint=$('#designTint').value||'#64e4ff';if(designerPath.length){dctx.lineCap='round';dctx.lineJoin='round';dctx.strokeStyle='rgba(240,34,43,.12)';dctx.lineWidth=52;dctx.beginPath();dctx.moveTo(designerPath[0][0]*W,designerPath[0][1]*H);for(let i=1;i<designerPath.length;i++)dctx.lineTo(designerPath[i][0]*W,designerPath[i][1]*H);dctx.stroke();dctx.strokeStyle=tint;dctx.lineWidth=4;dctx.beginPath();dctx.moveTo(designerPath[0][0]*W,designerPath[0][1]*H);for(let i=1;i<designerPath.length;i++)dctx.lineTo(designerPath[i][0]*W,designerPath[i][1]*H);dctx.stroke();designerPath.forEach((p,i)=>{dctx.fillStyle=i===0?'#55ff9a':i===designerPath.length-1?'#ff5b67':'#fff';dctx.beginPath();dctx.arc(p[0]*W,p[1]*H,8,0,Math.PI*2);dctx.fill();dctx.fillStyle='#000';dctx.font='bold 9px Arial';dctx.textAlign='center';dctx.fillText(i+1,p[0]*W,p[1]*H+3)});}
-    $('#designerStatus').textContent=`${designerPath.length} path point${designerPath.length===1?'':'s'}. ${designerPath.length<2?'Add at least 2 to test.':'Ready to cause problems.'}`;
+    $('#designerStatus').textContent=`${designerPath.length} path point${designerPath.length===1?'':'s'}. ${designerPath.length<2?'Add at least 2 to test.':'Ready to test.'}`;
   }
   dCanvas.addEventListener('pointerdown',e=>{ensureAudio();const p=canvasPoint(e,dCanvas);designerPath.push([Math.max(-.06,Math.min(1.06,p.x/dCanvas.width)),Math.max(.03,Math.min(.97,p.y/dCanvas.height))]);tone(400,.025,.006,'sine',520);drawDesigner();});
   $('#undoPointBtn').onclick=()=>{designerPath.pop();drawDesigner()};$('#clearPathBtn').onclick=()=>{designerPath=[];drawDesigner()};$('#designTint').oninput=drawDesigner;
   $('#testDesignBtn').onclick=()=>{if(designerPath.length<2)return $('#designerStatus').textContent='Need at least 2 path points first.';startLevel(-1,makeDesignerLevel())};
-  $('#saveDesignBtn').onclick=()=>{if(designerPath.length<2)return $('#designerStatus').textContent='Need at least 2 path points first.';const lvl=makeDesignerLevel();customLevels.push(lvl);saveCustomLevels();renderLevelCards();$('#designerStatus').textContent=`Saved “${lvl.name}” to this browser's level selector.`;tone(620,.08,.009,'sine',820)};
-  $('#copyDesignBtn').onclick=async()=>{if(designerPath.length<2)return $('#designerStatus').textContent='Need at least 2 path points first.';const lvl=makeDesignerLevel();delete lvl.custom;const txt=JSON.stringify(lvl,null,2);try{await navigator.clipboard.writeText(txt);$('#designerStatus').textContent='Copied a level object. Paste it into window.UNRENDERED_LEVELS in levels.js.';}catch(_){$('#designerStatus').textContent='Clipboard was blocked. Open DevTools and use the saved/tested version instead.';}};
+  $('#saveDesignBtn').onclick=()=>{if(designerPath.length<2)return $('#designerStatus').textContent='Need at least 2 path points first.';const lvl=makeDesignerLevel();customLevels.push(lvl);saveCustomLevels();renderLevelCards();$('#designerStatus').textContent=`Saved “${lvl.name}”.`;tone(620,.08,.009,'sine',820)};
+  $('#copyDesignBtn').onclick=async()=>{if(designerPath.length<2)return $('#designerStatus').textContent='Need at least 2 path points first.';const lvl=makeDesignerLevel();delete lvl.custom;const txt=JSON.stringify(lvl,null,2);try{await navigator.clipboard.writeText(txt);$('#designerStatus').textContent='Copied. Paste the level object into window.UNRENDERED_LEVELS in levels.js.';}catch(_){$('#designerStatus').textContent='Clipboard access was blocked.';}};
 
   canvas.addEventListener('pointermove',e=>{if(state)state.pointer=canvasPoint(e)});canvas.addEventListener('pointerleave',()=>{if(state)state.pointer={x:-999,y:-999}});canvas.addEventListener('pointerdown',e=>{if(!state||state.ended)return;placeTower(canvasPoint(e).x,canvasPoint(e).y)});
-  $('#playBtn').onclick=()=>{ensureAudio();renderLevelCards();showScreen('levelsScreen')};$('#designerBtn').onclick=()=>{ensureAudio();showScreen('designerScreen');drawDesigner()};$('#howBtn').onclick=()=>showScreen('helpScreen');$$('[data-back="home"]').forEach(b=>b.onclick=()=>showScreen('homeScreen'));$('#exitGameBtn').onclick=()=>{renderLevelCards();showScreen('levelsScreen')};$('#resultLevelsBtn').onclick=()=>{renderLevelCards();showScreen('levelsScreen')};$('#retryBtn').onclick=()=>state.direct?startLevel(-1,state.lvl):startLevel(state.levelIndex);waveBtn.onclick=startWave;
+  $('#playBtn').onclick=()=>{ensureAudio();endlessSession.active=false;renderLevelCards();showScreen('levelsScreen')};$('#endlessBtn').onclick=startEndless;$('#designerBtn').onclick=()=>{ensureAudio();endlessSession.active=false;showScreen('designerScreen');drawDesigner()};$('#howBtn').onclick=()=>showScreen('helpScreen');$$('[data-back="home"]').forEach(b=>b.onclick=()=>{endlessSession.active=false;clearTimeout(endlessTimer);showScreen('homeScreen')});$('#exitGameBtn').onclick=()=>{endlessSession.active=false;clearTimeout(endlessTimer);renderLevelCards();showScreen('levelsScreen')};$('#resultLevelsBtn').onclick=()=>{endlessSession.active=false;renderLevelCards();showScreen('levelsScreen')};$('#retryBtn').onclick=()=>{endlessSession.active=false;state.direct?startLevel(-1,state.lvl,state.difficultyMult):startLevel(state.levelIndex,null,state.difficultyMult)};waveBtn.onclick=startWave;
 
   addEventListener('resize',fitArena);
   renderLevelCards();makeTowerButtons();drawDesigner();
