@@ -12,37 +12,64 @@
     <section id="homeScreen" class="screen active">
       <div class="noise"></div>
       <div class="menu-card">
-        <p class="eyebrow">BUILD 0.0.3 // probably stable</p>
+        <p class="eyebrow">BUILD 0.0.4 // rendering is optional</p>
         <h1>UNRENDERED</h1>
-        <p class="subtitle">A tower defence game held together by rectangles, bad ideas, and your sprites.</p>
+        <p class="subtitle">A chaotic tower defence game made out of suspicious geometry and your original backgrounded sprites.</p>
         <div class="menu-actions">
           <button id="playBtn" class="big-btn">PLAY</button>
+          <button id="designerBtn" class="ghost-btn">LEVEL DESIGNER</button>
           <button id="howBtn" class="ghost-btn">HOW TO PLAY</button>
         </div>
-        <p class="tiny">No frameworks. No loading screen. GitHub Pages ready.</p>
+        <p class="tiny">GitHub Pages ready // levels still live in <code>levels.js</code></p>
       </div>
     </section>
 
-    <section id="levelsScreen" class="screen">
+    <section id="levelsScreen" class="screen scroll-screen">
       <header class="screen-header">
         <button class="back-btn" data-back="home">← HOME</button>
-        <div>
-          <p class="eyebrow">SELECT A PROBLEM</p>
-          <h2>LEVEL SELECTOR</h2>
-        </div>
+        <div><p class="eyebrow">SELECT A PROBLEM</p><h2>LEVEL SELECTOR</h2></div>
       </header>
       <div id="levelGrid" class="level-grid"></div>
     </section>
 
-    <section id="helpScreen" class="screen">
+    <section id="helpScreen" class="screen scroll-screen">
       <header class="screen-header">
         <button class="back-btn" data-back="home">← HOME</button>
         <div><p class="eyebrow">DOCUMENTATION // suspiciously short</p><h2>HOW TO PLAY</h2></div>
       </header>
       <div class="help-card">
-        <p>Choose a tower at the bottom, then click an empty spot away from the enemy path. Start waves and stop the red things from reaching the end.</p>
-        <p><b>PING</b> fires quickly. <b>CRASH</b> hits an area. <b>NULL</b> is slow but hits hard and slows enemies.</p>
-        <p>Everything about each stage lives in <code>levels.js</code>, so adding more levels later is intentionally easy.</p>
+        <p>Pick a tower, click an empty spot away from the enemy path, then start a wave. Stop the red problem from reaching the exit.</p>
+        <p><b>PING</b> fires fast. <b>CRASH</b> splashes. <b>NULL</b> slows and hits hard. <b>ALONEWOOD</b> covers a huge area but does tiny chip damage. <b>BLUESCREEN</b> charges for 7 seconds, then fires a piercing railgun laser.</p>
+        <p>The battlefield now scales to whatever space your browser has, so the title, arena, and controls should stay on-screen together.</p>
+        <p>Built-in stages are in <code>levels.js</code>. The Level Designer can make a quick path and test it without editing code.</p>
+      </div>
+    </section>
+
+    <section id="designerScreen" class="screen designer-screen">
+      <header class="screen-header compact-header">
+        <button class="back-btn" data-back="home">← HOME</button>
+        <div><p class="eyebrow">VERY LEGAL MAP SOFTWARE</p><h2>LEVEL DESIGNER</h2></div>
+      </header>
+      <div class="designer-layout">
+        <div class="designer-canvas-wrap">
+          <canvas id="designerCanvas" width="960" height="540"></canvas>
+          <div class="designer-hint">Click to add path points. Start near the left edge and finish near the right.</div>
+        </div>
+        <aside class="designer-panel">
+          <label>NAME<input id="designName" value="Custom Disaster" maxlength="32"></label>
+          <label>START CASH<input id="designCash" type="number" min="50" max="9999" value="300"></label>
+          <label>BASE HP<input id="designHP" type="number" min="1" max="999" value="20"></label>
+          <label>WAVES<input id="designWaves" type="number" min="1" max="12" value="5"></label>
+          <label>TINT<input id="designTint" type="color" value="#64e4ff"></label>
+          <div class="designer-actions">
+            <button id="undoPointBtn" class="ghost-btn">UNDO POINT</button>
+            <button id="clearPathBtn" class="ghost-btn">CLEAR</button>
+            <button id="testDesignBtn" class="big-btn">TEST LEVEL</button>
+            <button id="saveDesignBtn" class="ghost-btn">SAVE TO SELECTOR</button>
+            <button id="copyDesignBtn" class="ghost-btn">COPY LEVELS.JS OBJECT</button>
+          </div>
+          <p id="designerStatus" class="designer-status">0 path points.</p>
+        </aside>
       </div>
     </section>
 
@@ -59,6 +86,7 @@
 
       <div id="gameWrap" class="game-wrap">
         <canvas id="gameCanvas" width="960" height="600"></canvas>
+        <div id="screenFlash" class="screen-flash"></div>
         <div id="toast" class="toast"></div>
         <div id="resultOverlay" class="result-overlay hidden">
           <div class="result-card">

@@ -1,20 +1,15 @@
 # Unrendered
 
-A tiny dependency-free tower defence game made for GitHub Pages.
+Static GitHub Pages-ready tower defence game. Upload the contents of this folder to a repository and enable GitHub Pages.
 
-## Run locally
-Open `index.html`, or use a simple local server if your browser blocks local assets.
+## v0.0.4
+- Uses the supplied original backgrounded tower sprites: Ping, Crash, Null, Alonewood, and Bluescreen.
+- Original backgrounded enemy sprite is used directly.
+- The game screen fits itself into the browser viewport instead of requiring vertical scrolling.
+- Alonewood has enormous range and very low rapid chip damage.
+- Bluescreen charges for 7 seconds and fires a piercing railgun beam.
+- More particles, shockwaves, screen effects, and quiet WebAudio sound effects.
+- Simple built-in Level Designer. Click to create path points, test instantly, save custom levels locally, or copy a level object for `levels.js`.
+- The three built-in stages remain in `levels.js`.
 
-## GitHub Pages
-Upload the contents of this folder to a repository, then enable GitHub Pages from the repository root / main branch.
-
-## Adding levels
-Edit `levels.js`. Each object controls its own name, path, starting cash, base HP, and waves. Path points use normalized coordinates (`0` to `1`) so they automatically resize with the canvas.
-
-## Files
-- `index.html` — menus and game layout
-- `style.css` — UI styling
-- `levels.js` — level definitions only
-- `main.js` — gameplay engine
-- `assets/unit.png` and `assets/enemy.png` — transparent versions of the supplied drawings
-- `assets/*-original.png` — original supplied files
+No external libraries or servers are required.
