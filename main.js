@@ -24,7 +24,9 @@
   const imageFiles = {
     ping:'assets/ping.png', crash:'assets/crash.png', null:'assets/null.png',
     alonewood:'assets/alonewood.png', bluescreen:'assets/bluescreen.png', enemy:'assets/enemy.png',
-    tanker:'assets/enemytanker.png', rusher:'assets/enemyrusher.png'
+    tanker:'assets/enemytanker.png', rusher:'assets/enemyrusher.png',
+    unusedunloved:'assets/unusedunloved.png', changeme00:'assets/changeme00.png',
+    thinkingcrystals:'assets/thinkingcrystals.png', sculpturedemon:'assets/sculpturedemon.png'
   };
   Object.entries(imageFiles).forEach(([key,src]) => { const im = new Image(); im.src = src; images[key] = im; });
 
@@ -56,7 +58,7 @@
   let customLevels = loadCustomLevels();
   let selectedDifficulty = localStorage.getItem('unrendered_difficulty') || 'normal';
   if (!DIFFICULTIES[selectedDifficulty]) selectedDifficulty = 'normal';
-  let endlessSession = { active:false, cleared:0, lastIndex:-1 };
+  let endlessSession = { active:false, cleared:0, mapIndex:-1, lastWaveKey:'' };
   let endlessTimer = 0;
 
   function showScreen(id) {
@@ -176,7 +178,7 @@
     state = {
       levelIndex:index, lvl, cash:lvl.startCash, hp:lvl.baseHP, wave:-1, waveRunning:false, difficulty:selectedDifficulty, difficultyMult:diffMult,
       spawnLeft:0, spawnTimer:0, enemies:[], towers:[], bullets:[], particles:[], floaters:[], shockwaves:[], lasers:[],
-      elapsed:0, ended:false, autoStarted:false, intermission:0, pointer:{x:-999,y:-999}, direct:!!directLevel, endless:endlessSession.active
+      elapsed:0, ended:false, autoStarted:false, intermission:0, currentWave:null, pointer:{x:-999,y:-999}, direct:!!directLevel, endless:endlessSession.active
     };
     $('#levelNumber').textContent = directLevel ? '??' : String((lvl.id||index+1)).padStart(2,'0');
     $('#levelName').textContent = endlessSession.active ? `ENDLESS // ${lvl.name}` : lvl.name; $('#resultOverlay').classList.add('hidden');
@@ -188,7 +190,7 @@
   function syncHud() {
     if (!state) return;
     $('#hpText').textContent=Math.max(0,Math.ceil(state.hp)); $('#cashText').textContent=Math.floor(state.cash);
-    $('#waveText').textContent=`${Math.max(0,state.wave+1)}/${state.lvl.waves.length}`;
+    $('#waveText').textContent=state.endless?`${Math.max(0,state.wave+1)}/∞`:`${Math.max(0,state.wave+1)}/${state.lvl.waves.length}`;
     $('#difficultyText').textContent=`${DIFFICULTIES[state.difficulty].name} ${Math.round(state.difficultyMult*100)}%`;
     $('#endlessClearedText').textContent=endlessSession.cleared;
     const canReady=!state.autoStarted&&!state.ended&&state.towers.length>=2;
@@ -219,31 +221,52 @@
     beginWave();
   }
 
+  function randomEndlessWave() {
+    const pool=[];
+    UNRENDERED_LEVELS.forEach((lvl,li)=>lvl.waves.forEach((wave,wi)=>pool.push({wave,lvl,li,wi,key:`${li}:${wi}`})));
+    if(!pool.length)return null;
+    let choices=pool;
+    if(pool.length>1&&endlessSession.lastWaveKey)choices=pool.filter(x=>x.key!==endlessSession.lastWaveKey);
+    const pick=choices[Math.floor(Math.random()*choices.length)];
+    endlessSession.lastWaveKey=pick.key;
+    return pick;
+  }
+
   function beginWave() {
-    if(!state||state.waveRunning||state.ended||state.wave>=state.lvl.waves.length-1)return;
+    if(!state||state.waveRunning||state.ended)return;
+    if(!state.endless&&state.wave>=state.lvl.waves.length-1)return;
     state.intermission=0;
-    state.wave++; const w=state.lvl.waves[state.wave]; state.spawnLeft=w.count; state.spawnTimer=0; state.waveRunning=true; syncHud();
+    state.wave++;
+    let w;
+    if(state.endless){
+      const pick=randomEndlessWave(); if(!pick)return;
+      w={...pick.wave}; state.currentWave=w;
+      toastMsg(w.boss?`BOSS WAVE // ${pick.lvl.name}`:`WAVE ${state.wave+1} // ${pick.lvl.name}`,1000);
+    }else{
+      w=state.lvl.waves[state.wave]; state.currentWave=w;
+      toastMsg(w.boss?'BOSS WAVE':`WAVE ${state.wave+1}`,900);
+    }
+    state.spawnLeft=w.count; state.spawnTimer=0; state.waveRunning=true; syncHud();
     tone(w.boss?95:260,.08,.012,'square',w.boss?55:190);
-    toastMsg(w.boss?'BOSS WAVE':`WAVE ${state.wave+1}`,900);
   }
 
   function spawnEnemy(w) {
     const pos=posOnPath(0), type=w.type||'enemy';
-    const mods=type==='tanker'?{hp:2.15,speed:.62,reward:1.5,scale:1.15}:type==='rusher'?{hp:.62,speed:1.7,reward:.9,scale:.9}:{hp:1,speed:1,reward:1,scale:1};
+    const mods=type==='tanker'?{hp:2.15,speed:.62,reward:1.5,scale:1.15}:type==='rusher'?{hp:.62,speed:1.7,reward:.9,scale:.9}:type==='unusedunloved'?{hp:1.45,speed:.78,reward:.62,scale:1.05}:type==='changeme00'?{hp:1.0,speed:1.0,reward:1.15,scale:1.02}:type==='thinkingcrystals'?{hp:1.18,speed:.84,reward:1.35,scale:1.08}:type==='sculpturedemon'?{hp:1.65,speed:.72,reward:1.8,scale:1.22}:{hp:1,speed:1,reward:1,scale:1};
     const diff=state.difficultyMult;
     const hp=w.hp*mods.hp*diff, speed=w.speed*mods.speed*diff;
-    state.enemies.push({x:pos.x,y:pos.y,progress:0,hp,maxHp:hp,speed,baseSpeed:speed,reward:w.reward*mods.reward,scale:(w.scale||1)*mods.scale,boss:!!w.boss,type,slowTimer:0,flash:0,dead:false});
+    state.enemies.push({x:pos.x,y:pos.y,progress:0,hp,maxHp:hp,speed,baseSpeed:speed,reward:w.reward*mods.reward,scale:(w.scale||1)*mods.scale,boss:!!w.boss,type,slowTimer:0,flash:0,dead:false,age:0,shield:type==='thinkingcrystals'?hp*.34:0,maxShield:type==='thinkingcrystals'?hp*.34:0});
     state.shockwaves.push({x:pos.x,y:pos.y,r:5,max:type==='tanker'?58:42,life:.25,color:type==='rusher'?'#ff4b55':'#f0222b'});
   }
 
   function update(dt) {
     if(!state||state.ended)return; state.elapsed+=dt;
     if(state.autoStarted&&state.intermission>0&&!state.waveRunning){state.intermission=Math.max(0,state.intermission-dt);syncHud();if(state.intermission<=0)beginWave();}
-    if(state.waveRunning){const w=state.lvl.waves[state.wave];state.spawnTimer-=dt;while(state.spawnLeft>0&&state.spawnTimer<=0){spawnEnemy(w);state.spawnLeft--;state.spawnTimer+=w.gap;}}
+    if(state.waveRunning){const w=state.currentWave;state.spawnTimer-=dt;while(state.spawnLeft>0&&state.spawnTimer<=0){spawnEnemy(w);state.spawnLeft--;state.spawnTimer+=w.gap;}}
     const {total}=pathLengthData();
     for(const e of state.enemies){
-      if(e.dead)continue;e.slowTimer=Math.max(0,e.slowTimer-dt);e.flash=Math.max(0,e.flash-dt);const sp=e.baseSpeed*(e.slowTimer>0?.57:1);e.progress+=(sp*600/Math.max(1,total))*dt;const p=posOnPath(e.progress);e.x=p.x;e.y=p.y;
-      if(e.progress>=1){e.dead=true;state.hp-=e.boss?5:1;shake=Math.max(shake,8);floater(e.x-40,e.y-20,e.boss?'-5 HP':'-1 HP','#ff7379');tone(65,.08,.012,'square',40);if(state.hp<=0)finish(false);}
+      if(e.dead)continue;e.age+=dt;e.slowTimer=Math.max(0,e.slowTimer-dt);e.flash=Math.max(0,e.flash-dt);let shift=1;if(e.type==='changeme00')shift=.62+Math.abs(Math.sin(e.age*2.1))*1.18;const sp=e.baseSpeed*shift*(e.slowTimer>0?.57:1);e.progress+=(sp*600/Math.max(1,total))*dt;const p=posOnPath(e.progress);e.x=p.x;e.y=p.y;
+      if(e.progress>=1){e.dead=true;state.hp-=e.boss?5:(e.type==='sculpturedemon'?2:1);shake=Math.max(shake,8);floater(e.x-40,e.y-20,e.boss?'-5 HP':(e.type==='sculpturedemon'?'-2 HP':'-1 HP'),'#ff7379');tone(65,.08,.012,'square',40);if(state.hp<=0)finish(false);}
     }
 
     for(const t of state.towers){
@@ -262,7 +285,7 @@
     for(const s of state.shockwaves){s.life-=dt;s.r+=(s.max-s.r)*Math.min(1,dt*12);}
     for(const l of state.lasers)l.life-=dt;
     state.enemies=state.enemies.filter(e=>!e.dead);state.bullets=state.bullets.filter(b=>!b.dead);state.particles=state.particles.filter(p=>p.life>0);state.floaters=state.floaters.filter(f=>f.life>0);state.shockwaves=state.shockwaves.filter(s=>s.life>0);state.lasers=state.lasers.filter(l=>l.life>0);
-    if(state.waveRunning&&state.spawnLeft===0&&state.enemies.length===0){state.waveRunning=false;if(state.wave===state.lvl.waves.length-1)finish(true);else{state.cash+=35+state.wave*10;state.intermission=3;toastMsg('WAVE CLEARED // 3 SECOND BREAK');tone(440,.09,.009,'sine',650);syncHud();}}
+    if(state.waveRunning&&state.spawnLeft===0&&state.enemies.length===0){state.waveRunning=false;if(!state.endless&&state.wave===state.lvl.waves.length-1)finish(true);else{if(state.endless){endlessSession.cleared++;$('#endlessClearedText').textContent=endlessSession.cleared;}state.cash+=35+Math.min(state.wave,20)*10;state.intermission=3;toastMsg('WAVE CLEARED // 3 SECOND BREAK');tone(440,.09,.009,'sine',650);syncHud();}}
     shake*=Math.pow(.025,dt);
   }
 
@@ -277,7 +300,7 @@
   }
 
   function hitBullet(b){b.dead=true;const targets=b.splash?state.enemies.filter(e=>!e.dead&&Math.hypot(e.x-b.target.x,e.y-b.target.y)<=b.splash):[b.target];targets.forEach(e=>damageEnemy(e,b.damage,b.slow));burst(b.target.x,b.target.y,b.type==='crash'?16:7,b.type);state.shockwaves.push({x:b.target.x,y:b.target.y,r:4,max:b.type==='crash'?64:26,life:.22,color:b.type==='crash'?'#ff7d75':'#94dfff'});if(b.type==='crash')shake=Math.max(shake,5);}
-  function damageEnemy(e,dmg,slow){if(e.dead)return;e.hp-=dmg;e.flash=.08;if(slow)e.slowTimer=Math.max(e.slowTimer,1.2);if(e.hp<=0){e.dead=true;const reward=Math.round(e.reward*state.lvl.rewardScale);state.cash+=reward;floater(e.x-15,e.y-30,`+$${reward}`,'#75dcff');burst(e.x,e.y,e.boss?34:13,e.boss?'boss':'kill');state.shockwaves.push({x:e.x,y:e.y,r:5,max:e.boss?100:45,life:e.boss?.45:.25,color:e.boss?'#ffd37d':'#f0222b'});shake=Math.max(shake,e.boss?13:3);soundKill(e.boss);syncHud();}}
+  function damageEnemy(e,dmg,slow){if(e.dead)return;if(e.shield>0){const blocked=Math.min(e.shield,dmg);e.shield-=blocked;dmg-=blocked;floater(e.x-10,e.y-34,`-${Math.ceil(blocked)}`,'#9de8ff');if(dmg<=0){e.flash=.06;return;}}e.hp-=dmg;e.flash=.08;if(slow)e.slowTimer=Math.max(e.slowTimer,1.2);if(e.hp<=0){e.dead=true;const reward=Math.round(e.reward*state.lvl.rewardScale);state.cash+=reward;floater(e.x-15,e.y-30,`+$${reward}`,'#75dcff');burst(e.x,e.y,e.boss?34:13,e.boss?'boss':'kill');state.shockwaves.push({x:e.x,y:e.y,r:5,max:e.boss?100:45,life:e.boss?.45:.25,color:e.boss?'#ffd37d':'#f0222b'});shake=Math.max(shake,e.boss?13:3);soundKill(e.boss);syncHud();}}
   function burst(x,y,n,kind='normal'){const cols=kind==='rail'?['#fff','#aeefff','#278cff']:kind==='boss'?['#ffca63','#f0222b','#fff']:['#f0222b','#0aa1e8','#fff'];for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=45+Math.random()*240;state.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.22+Math.random()*.55,color:cols[(Math.random()*cols.length)|0],size:2+Math.random()*4});}}
   function muzzle(x,y,type){state.shockwaves.push({x,y,r:3,max:type==='alonewood'?15:27,life:.13,color:type==='null'?'#d48cff':'#9ce7ff'});}
   function floater(x,y,text,color){state.floaters.push({x,y,text,color,life:.8});}
@@ -303,21 +326,20 @@
   function drawImageContained(im,x,y,maxW,maxH){const ar=im.naturalWidth/Math.max(1,im.naturalHeight);let w=maxW,h=w/ar;if(h>maxH){h=maxH;w=h*ar}ctx.drawImage(im,x-w/2,y-h/2,w,h);}
   function drawSprite(type,x,y,size){const im=images[type];if(im&&im.complete&&im.naturalWidth){ctx.imageSmoothingEnabled=true;drawImageContained(im,x,y,size,size)}else{ctx.strokeStyle='#0aa1e8';ctx.strokeRect(x-size/2,y-size/2,size,size)}}
   function drawTower(t){const def=TOWERS[t.type];ctx.save();ctx.translate(t.x,t.y);ctx.fillStyle=t.type==='bluescreen'?'rgba(70,90,255,.14)':t.type==='alonewood'?'rgba(190,120,75,.12)':'rgba(255,255,255,.07)';ctx.beginPath();ctx.arc(0,0,31,0,Math.PI*2);ctx.fill();drawSprite(t.type,0,0,56);ctx.strokeStyle='rgba(255,255,255,.18)';ctx.strokeRect(-28,-28,56,56);ctx.fillStyle='#d7dbe6';ctx.font='bold 9px Arial';ctx.textAlign='center';ctx.fillText(def.name,0,39);if(def.rail){const charge=1-Math.max(0,t.cd)/def.rate;ctx.fillStyle='#111827';ctx.fillRect(-28,43,56,4);ctx.fillStyle='#56c9ff';ctx.fillRect(-28,43,56*Math.max(0,Math.min(1,charge)),4)}ctx.restore();}
-  function drawEnemy(e){const s=54*e.scale;ctx.save();ctx.translate(e.x,e.y);if(e.flash){ctx.globalAlpha=.55;ctx.fillStyle='#fff';ctx.fillRect(-s/2,-s/2,s,s);ctx.globalAlpha=1}const im=images[e.type]||images.enemy;if(im&&im.complete&&im.naturalWidth)drawImageContained(im,0,0,s,s);else{ctx.strokeStyle='#f0222b';ctx.strokeRect(-s/2,-s/2,s,s)}const w=Math.max(34,s*.9);ctx.fillStyle='#25090b';ctx.fillRect(-w/2,-s/2-10,w,5);ctx.fillStyle=e.boss?'#ffbd6a':e.type==='tanker'?'#ff7c86':e.type==='rusher'?'#ff2835':'#f0222b';ctx.fillRect(-w/2,-s/2-10,w*Math.max(0,e.hp/e.maxHp),5);if(e.slowTimer>0){ctx.strokeStyle='#b37cff';ctx.beginPath();ctx.arc(0,0,s*.42,0,Math.PI*2);ctx.stroke()}ctx.restore();}
+  function drawEnemy(e){const s=54*e.scale;ctx.save();ctx.translate(e.x,e.y);if(e.flash){ctx.globalAlpha=.55;ctx.fillStyle='#fff';ctx.fillRect(-s/2,-s/2,s,s);ctx.globalAlpha=1}const im=images[e.type]||images.enemy;if(im&&im.complete&&im.naturalWidth)drawImageContained(im,0,0,s,s);else{ctx.strokeStyle='#f0222b';ctx.strokeRect(-s/2,-s/2,s,s)}const w=Math.max(34,s*.9);ctx.fillStyle='#25090b';ctx.fillRect(-w/2,-s/2-10,w,5);ctx.fillStyle=e.boss?'#ffbd6a':e.type==='tanker'?'#ff7c86':e.type==='rusher'?'#ff2835':e.type==='thinkingcrystals'?'#8adcf0':e.type==='sculpturedemon'?'#b05abb':e.type==='unusedunloved'?'#25b85a':e.type==='changeme00'?'#8fd9ea':'#f0222b';ctx.fillRect(-w/2,-s/2-10,w*Math.max(0,e.hp/e.maxHp),5);if(e.maxShield>0&&e.shield>0){ctx.fillStyle='#9de8ff';ctx.fillRect(-w/2,-s/2-16,w*Math.max(0,e.shield/e.maxShield),3)}if(e.slowTimer>0){ctx.strokeStyle='#b37cff';ctx.beginPath();ctx.arc(0,0,s*.42,0,Math.PI*2);ctx.stroke()}ctx.restore();}
 
   function finish(win){
     if(!state||state.ended)return;state.ended=true;state.waveRunning=false;syncHud();tone(win?520:70,.25,.015,win?'sine':'sawtooth',win?780:35);
-    if(win&&endlessSession.active){endlessSession.cleared++;$('#endlessClearedText').textContent=endlessSession.cleared;toastMsg(`LEVEL CLEARED // ${endlessSession.cleared} TOTAL`,1800);clearTimeout(endlessTimer);endlessTimer=setTimeout(startNextEndless,2200);return;}
+    if(win&&endlessSession.active)return;
     $('#resultEyebrow').textContent=win?'LEVEL COMPLETE':'RUN OVER';$('#resultTitle').textContent=win?'LEVEL CLEARED':'DEFEAT';$('#resultText').textContent=win?'Level complete.':'The base ran out of HP.';$('#resultOverlay').classList.remove('hidden');
   }
 
   function startEndless(){
-    ensureAudio();endlessSession={active:true,cleared:0,lastIndex:-1};startNextEndless();
-  }
-  function startNextEndless(){
-    if(!endlessSession.active)return;const levels=UNRENDERED_LEVELS.filter(l=>!l.custom);if(!levels.length)return;
-    let pool=UNRENDERED_LEVELS.map((lvl,i)=>({lvl,i}));if(pool.length>1)pool=pool.filter(x=>x.i!==endlessSession.lastIndex);
-    const pick=pool[Math.floor(Math.random()*pool.length)];endlessSession.lastIndex=pick.i;startLevel(pick.i);
+    ensureAudio();
+    const levels=UNRENDERED_LEVELS.filter(l=>!l.custom); if(!levels.length)return;
+    const mapIndex=Math.floor(Math.random()*levels.length);
+    endlessSession={active:true,cleared:0,mapIndex,lastWaveKey:''};
+    startLevel(mapIndex);
   }
   function fitArena(){const wrap=$('#gameWrap'),screen=$('#gameScreen'),top=$('.game-topbar'),controls=$('.control-panel');if(!wrap||!screen)return;const cs=getComputedStyle(screen),padX=parseFloat(cs.paddingLeft)+parseFloat(cs.paddingRight),padY=parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom),gap=parseFloat(cs.rowGap||cs.gap)||0;const maxW=Math.max(240,innerWidth-padX),maxH=Math.max(150,innerHeight-padY-(top?.offsetHeight||0)-(controls?.offsetHeight||0)-gap*2);const w=Math.floor(Math.min(1200,maxW,maxH*(WORLD_W/WORLD_H)));wrap.style.width=w+'px';wrap.style.height=Math.floor(w*(WORLD_H/WORLD_W))+'px';}
   function loop(now){const dt=Math.min(.033,(now-last)/1000);last=now;update(dt);draw();if($('#gameScreen').classList.contains('active'))raf=requestAnimationFrame(loop);}

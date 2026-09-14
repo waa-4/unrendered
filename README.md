@@ -1,17 +1,13 @@
-# Unrendered
+# Unrendered v0.0.7
 
-GitHub Pages-ready tower defence game.
+GitHub Pages-ready tower defense game.
 
-## Current build: 0.0.6
+## Current content
+- World 1 now has 10 levels.
+- New enemies: Unused/Unloved, ChangeMe00, Thinking Crystals, and Sculpture Demon.
+- Each new enemy first appears one level at a time after Level 3.
+- Endless picks one map when the run starts and keeps that map for the whole run. Each new wave is randomly pulled from the built-in levels instead of changing maps.
+- Endless still uses the selected difficulty and keeps the 3-second automatic wave break.
+- Levels remain editable in `levels.js`.
 
-- World-based level selector. World 1 is set up for 10 levels; 3 are currently built.
-- Difficulty settings: Easy 50%, Normal 100%, Hard 150%, Insane 200%, Ultra 300%, Nightmare 400–575% per level.
-- Difficulty scales enemy HP and movement speed.
-- Endless mode picks random built-in levels and automatically continues after each cleared level.
-- READY! unlocks after 2 units are placed. Later waves start automatically after a 3 second break.
-- Fixed 960x600 battlefield that scales proportionally to fit the browser.
-- Level data stays in `levels.js`.
-- Built-in Level Designer for simple custom paths.
-
-## GitHub Pages
-Upload the contents of this folder to a repository and enable GitHub Pages from the repository settings.
+Open `index.html` locally or upload the contents of this folder to GitHub Pages.
