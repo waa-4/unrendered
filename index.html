@@ -1,135 +1,17 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#08090d" />
-  <title>Unrendered</title>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-  <main id="app">
-    <section id="homeScreen" class="screen active">
-      <div class="noise"></div>
-      <div class="menu-card">
-        <p class="eyebrow">BUILD 0.0.8</p>
-        <h1>UNRENDERED</h1>
-        <p class="subtitle">Tower defence with hand-drawn units and enemies.</p>
-        <div class="menu-actions">
-          <button id="playBtn" class="big-btn">PLAY</button>
-          <button id="endlessBtn" class="big-btn alt-btn">ENDLESS</button>
-          <button id="designerBtn" class="ghost-btn">LEVEL DESIGNER</button>
-          <button id="howBtn" class="ghost-btn">HOW TO PLAY</button>
-        </div>
-        <p class="tiny">Levels are stored in <code>levels.js</code>.</p>
-      </div>
-    </section>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no"><meta name="theme-color" content="#08090d"><title>Unrendered</title><link rel="stylesheet" href="style.css"></head><body><main id="app">
+<section id="homeScreen" class="screen active"><div class="noise"></div><div class="menu-card"><p class="eyebrow">BUILD 0.0.9</p><h1>UNRENDERED</h1><p class="subtitle">Tower defence.</p><div class="home-points">POINTS <b id="homePoints">0</b></div><div class="menu-actions"><button id="playBtn" class="big-btn">PLAY</button><button id="endlessBtn" class="big-btn alt-btn">ENDLESS</button><button id="upgradesBtn" class="ghost-btn">UPGRADES</button><button id="settingsBtn" class="ghost-btn">SETTINGS</button><button id="designerBtn" class="ghost-btn">LEVEL DESIGNER</button><button id="howBtn" class="ghost-btn">HOW TO PLAY</button></div></div></section>
 
-    <section id="levelsScreen" class="screen scroll-screen">
-      <header class="screen-header">
-        <button class="back-btn" data-back="home">← HOME</button>
-        <div><p class="eyebrow">CHOOSE A WORLD AND LEVEL</p><h2>LEVEL SELECTOR</h2></div>
-      </header>
-      <div class="difficulty-box">
-        <span>DIFFICULTY</span>
-        <div id="difficultyButtons" class="difficulty-buttons"></div>
-        <small id="difficultyInfo">Enemy stats: 100%</small>
-      </div>
-      <div id="worldList" class="world-list"></div>
-    </section>
+<section id="levelsScreen" class="screen scroll-screen"><header class="screen-header"><button class="back-btn" data-back="home">← HOME</button><div><p class="eyebrow">CHOOSE A WORLD AND LEVEL</p><h2>LEVEL SELECTOR</h2></div></header><div class="difficulty-box"><span>DIFFICULTY</span><div id="difficultyButtons" class="difficulty-buttons"></div><small id="difficultyInfo"></small></div><div id="worldList" class="world-list"></div></section>
 
-    <section id="helpScreen" class="screen scroll-screen">
-      <header class="screen-header">
-        <button class="back-btn" data-back="home">← HOME</button>
-        <div><p class="eyebrow">CONTROLS</p><h2>HOW TO PLAY</h2></div>
-      </header>
-      <div class="help-card">
-        <p>Place at least 2 units, then press READY! once. Every later wave starts by itself after a 3-second break.</p>
-        <p>Use the arrows beside the unit bar to change pages. Click a placed unit to inspect it or sell it for 70% of its price.</p>
-        <p><b>PING</b> fires quickly. <b>CRASH</b> has splash damage. <b>NULL</b> slows enemies. <b>ALONEWOOD</b> has huge range and low damage. <b>BLUESCREEN</b> fires a piercing railgun every 7 seconds.</p>
-        <p><b>INFICOOKIE</b> is cheap rapid fire. <b>BLEEDBOT</b> causes damage over time. <b>PUMPKILLER</b> is a short-range heavy hitter. <b>LOBBER NINJA</b> throws long-range splash shots.</p>
-        <p>The battlefield stays at a 960×600 ratio and scales without stretching.</p>
-        <p>Difficulty mostly changes enemy HP. Higher difficulties also increase speed a little. Nightmare rolls its HP and speed multipliers when the level starts.</p>
-        <p>Endless keeps one map for the whole run and pulls waves from World 1. Later level waves enter the pool as the run gets longer.</p>
-      </div>
-    </section>
+<section id="settingsScreen" class="screen scroll-screen"><header class="screen-header"><button class="back-btn" data-back="home">← HOME</button><div><p class="eyebrow">OPTIONS</p><h2>SETTINGS</h2></div></header><div class="settings-card" id="settingsList"></div></section>
 
-    <section id="designerScreen" class="screen designer-screen">
-      <header class="screen-header compact-header">
-        <button class="back-btn" data-back="home">← HOME</button>
-        <div><p class="eyebrow">CUSTOM LEVELS</p><h2>LEVEL DESIGNER</h2></div>
-      </header>
-      <div class="designer-layout">
-        <div class="designer-canvas-wrap">
-          <canvas id="designerCanvas" width="960" height="540"></canvas>
-          <div class="designer-hint">Click to add path points. Start near the left edge and finish near the right.</div>
-        </div>
-        <aside class="designer-panel">
-          <label>NAME<input id="designName" value="Custom Level" maxlength="32"></label>
-          <label>START CASH<input id="designCash" type="number" min="50" max="9999" value="300"></label>
-          <label>BASE HP<input id="designHP" type="number" min="1" max="999" value="20"></label>
-          <label>WAVES<input id="designWaves" type="number" min="1" max="12" value="5"></label>
-          <label>TINT<input id="designTint" type="color" value="#64e4ff"></label>
-          <div class="designer-actions">
-            <button id="undoPointBtn" class="ghost-btn">UNDO POINT</button>
-            <button id="clearPathBtn" class="ghost-btn">CLEAR</button>
-            <button id="testDesignBtn" class="big-btn">TEST LEVEL</button>
-            <button id="saveDesignBtn" class="ghost-btn">SAVE TO SELECTOR</button>
-            <button id="copyDesignBtn" class="ghost-btn">COPY LEVELS.JS OBJECT</button>
-          </div>
-          <p id="designerStatus" class="designer-status">0 path points.</p>
-        </aside>
-      </div>
-    </section>
+<section id="upgradesScreen" class="screen scroll-screen"><header class="screen-header"><button class="back-btn" data-back="home">← HOME</button><div><p class="eyebrow">PERMANENT UPGRADES</p><h2>UPGRADES</h2></div></header><div class="upgrade-wallet">POINTS <b id="upgradePoints">0</b></div><div id="upgradeList" class="upgrade-list"></div></section>
 
-    <section id="gameScreen" class="screen game-screen">
-      <div class="game-topbar">
-        <button id="exitGameBtn" class="back-btn">← LEVELS</button>
-        <div class="level-title-wrap"><span id="levelNumber">01</span><strong id="levelName">Level</strong></div>
-        <div class="stats">
-          <span>HP <b id="hpText">20</b></span>
-          <span>$ <b id="cashText">0</b></span>
-          <span>WAVE <b id="waveText">0/0</b></span>
-          <span>DIFF <b id="difficultyText">NORMAL 100%</b></span>
-          <span id="endlessStat" class="hidden-stat">WAVES <b id="endlessClearedText">0</b></span>
-        </div>
-      </div>
+<section id="helpScreen" class="screen scroll-screen"><header class="screen-header"><button class="back-btn" data-back="home">← HOME</button><div><p class="eyebrow">CONTROLS</p><h2>HOW TO PLAY</h2></div></header><div class="help-card"><p>Place at least 2 units, then press READY! once. Later waves start by themselves after a short break.</p><p>Tap a placed unit to inspect, upgrade it during the run, or sell it. Fun Mode disables selling.</p><p>World 2 has two paths and two bases. If either base reaches 0 HP, the level ends.</p><p>Completing levels earns Points. Points buy permanent upgrades from the home screen, including base health.</p><p>Endless keeps one map and pulls random waves from unlocked level pools. Duplicate units get more expensive there.</p><p>Use pause and speed controls above the battlefield. Settings can reduce shake, flashing, particles and sound.</p></div></section>
 
-      <div id="gameWrap" class="game-wrap">
-        <canvas id="gameCanvas" width="960" height="600"></canvas>
-        <div id="screenFlash" class="screen-flash"></div>
-        <div id="toast" class="toast"></div>
-        <div id="unitPanel" class="unit-panel hidden">
-          <div><strong id="unitPanelName">PING</strong><small id="unitPanelStats"></small></div>
-          <button id="sellUnitBtn">SELL $0</button>
-          <button id="closeUnitPanelBtn" aria-label="Close">×</button>
-        </div>
-        <div id="resultOverlay" class="result-overlay hidden">
-          <div class="result-card">
-            <p class="eyebrow" id="resultEyebrow">RESULT</p>
-            <h2 id="resultTitle">YOU WIN</h2>
-            <p id="resultText"></p>
-            <div class="result-actions">
-              <button id="retryBtn" class="big-btn">RETRY</button>
-              <button id="resultLevelsBtn" class="ghost-btn">LEVELS</button>
-            </div>
-          </div>
-        </div>
-      </div>
+<section id="designerScreen" class="screen designer-screen"><header class="screen-header compact-header"><button class="back-btn" data-back="home">← HOME</button><div><p class="eyebrow">CUSTOM LEVELS</p><h2>LEVEL DESIGNER</h2></div></header><div class="designer-layout"><div class="designer-canvas-wrap"><canvas id="designerCanvas" width="960" height="540"></canvas><div class="designer-hint">Tap to add path points.</div></div><aside class="designer-panel"><label>NAME<input id="designName" value="Custom Level" maxlength="32"></label><label>START CASH<input id="designCash" type="number" min="50" max="9999" value="400"></label><label>WAVES<input id="designWaves" type="number" min="1" max="20" value="5"></label><label>TINT<input id="designTint" type="color" value="#64e4ff"></label><div class="designer-actions"><button id="undoPointBtn" class="ghost-btn">UNDO POINT</button><button id="clearPathBtn" class="ghost-btn">CLEAR</button><button id="testDesignBtn" class="big-btn">TEST LEVEL</button><button id="saveDesignBtn" class="ghost-btn">SAVE TO SELECTOR</button></div><p id="designerStatus" class="designer-status">0 path points.</p></aside></div></section>
 
-      <div class="control-panel">
-        <div class="unit-browser">
-          <button id="prevTowerPage" class="page-btn">‹</button>
-          <div id="towerButtons" class="tower-buttons"></div>
-          <button id="nextTowerPage" class="page-btn">›</button>
-          <span id="towerPageText" class="tower-page-text">1/1</span>
-        </div>
-        <button id="waveBtn" class="wave-btn" disabled>READY!</button>
-      </div>
-    </section>
-  </main>
-
-  <script src="levels.js"></script>
-  <script src="main.js"></script>
-</body>
-</html>
+<section id="gameScreen" class="screen game-screen"><div class="game-topbar"><button id="exitGameBtn" class="back-btn">← LEVELS</button><div class="level-title-wrap"><span id="levelNumber">01</span><strong id="levelName">Level</strong></div><div class="stats"><span>BASE <b id="hpText">20</b></span><span>$ <b id="cashText">0</b></span><span>WAVE <b id="waveText">0/0</b></span><span>POINTS <b id="gamePoints">0</b></span><span>DIFF <b id="difficultyText">NORMAL</b></span><span id="endlessStat" class="hidden-stat">WAVES <b id="endlessClearedText">0</b></span></div><div class="runtime-controls"><button id="pauseBtn">PAUSE</button><button class="speedBtn" data-speed="1">1×</button><button class="speedBtn" data-speed="1.5">1.5×</button><button class="speedBtn" data-speed="2">2×</button><button class="speedBtn" data-speed="3">3×</button></div></div>
+<div id="gameWrap" class="game-wrap"><canvas id="gameCanvas" width="960" height="600"></canvas><div id="screenFlash" class="screen-flash"></div><div id="toast" class="toast"></div><div id="unitPanel" class="unit-panel hidden"><div><strong id="unitPanelName">PING</strong><small id="unitPanelStats"></small></div><button id="upgradeUnitBtn">UPGRADE</button><button id="sellUnitBtn">SELL</button><button id="closeUnitPanelBtn">×</button></div><div id="resultOverlay" class="result-overlay hidden"><div class="result-card"><p class="eyebrow" id="resultEyebrow">RESULT</p><h2 id="resultTitle">YOU WIN</h2><p id="resultText"></p><div class="result-actions"><button id="retryBtn" class="big-btn">RETRY</button><button id="resultLevelsBtn" class="ghost-btn">LEVELS</button></div></div></div></div>
+<div class="control-panel"><div class="unit-browser"><button id="prevTowerPage" class="page-btn">‹</button><div id="towerButtons" class="tower-buttons"></div><button id="nextTowerPage" class="page-btn">›</button><span id="towerPageText" class="tower-page-text">1/1</span></div><button id="waveBtn" class="wave-btn" disabled>READY!</button></div></section>
+</main><script src="levels.js"></script><script src="main.js"></script></body></html>

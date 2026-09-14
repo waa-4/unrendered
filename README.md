@@ -1,21 +1,21 @@
-# Unrendered
+# Unrendered v0.0.9
 
-GitHub Pages-ready tower defence prototype.
+GitHub Pages-ready tower defence game. Upload the contents of this folder to a repository and enable GitHub Pages.
 
-## v0.0.8
-- Rebalanced World 1 and difficulty scaling.
-- Easy/Normal/Hard/Insane/Ultra/Nightmare now use separate HP and speed multipliers.
-- Added Inficookie, Bleedbot, Pumpkiller, and Lobber Ninja.
-- Added paged unit selection for a roster that can keep growing.
-- Click a placed unit to inspect it and sell it for a 70% refund.
-- Endless keeps one map and gradually adds waves from later World 1 levels to its random wave pool.
-- READY! still only needs to be pressed once after at least two units are placed; later waves start after 3-second breaks.
+## This build
+- World 1: 10 levels, one route/base.
+- World 2: 10 wider levels, two routes and two bases.
+- Easy, Normal, Hard, Insane, Ultra, Nightmare, and Fun Mode.
+- Fun Mode: no selling, double enemy count, slower pacing/enemies, very high enemy HP, high armor/multi-bar chances.
+- Endless duplicate-price scaling and reduced late-run income.
+- Random armor and multi-health-bar enemy variants.
+- Points earned from level clears and Endless milestones.
+- Permanent upgrade menu: base HP (20 to 9999), damage, range, fire rate, sell refund.
+- In-run unit upgrades using cash.
+- Pause and 1x / 1.5x / 2x / 3x speed controls.
+- Settings for shake, flashes, sound, damage numbers, health bars, sell confirmation, and particles.
+- 19 total units: the original 9 plus Brick, Needle, Splashbox, Relay, Ticker, Orbit, Crumbler, Snare, Burstglass, and Longhand.
+- 17 enemy types: the original 7 plus Paperclip, Clot, Zipper, Mirror, Healer, Splitter, Ghost, Leech, Brickhead, and Phase.
+- Improved responsive/mobile layout.
 
-## Files
-- `index.html` - screens and UI
-- `style.css` - layout and scaling
-- `main.js` - game engine, units, effects, Endless, selling
-- `levels.js` - worlds, paths, waves, level balance
-- `assets/` - original backgrounded sprites
-
-Upload the contents of this folder to a GitHub Pages repository root and enable Pages.
+Level data remains in `levels.js` for editing, but that developer note is no longer shown in the game UI.
