@@ -12,7 +12,7 @@
     <section id="homeScreen" class="screen active">
       <div class="noise"></div>
       <div class="menu-card">
-        <p class="eyebrow">BUILD 0.0.6</p>
+        <p class="eyebrow">BUILD 0.0.8</p>
         <h1>UNRENDERED</h1>
         <p class="subtitle">Tower defence with hand-drawn units and enemies.</p>
         <div class="menu-actions">
@@ -44,12 +44,13 @@
         <div><p class="eyebrow">CONTROLS</p><h2>HOW TO PLAY</h2></div>
       </header>
       <div class="help-card">
-        <p>Pick a tower and place at least 2 units. READY! unlocks after the second unit is placed. Press it once; later waves start automatically after a 3-second break.</p>
-        <p><b>PING</b> fires fast. <b>CRASH</b> splashes. <b>NULL</b> slows and hits hard. <b>ALONEWOOD</b> covers a huge area but does tiny chip damage. <b>BLUESCREEN</b> charges for 7 seconds, then fires a piercing railgun laser.</p>
-        <p>The battlefield keeps a 960×600 aspect ratio and scales to fit the browser without stretching.</p>
-        <p>Worlds and levels are stored in <code>levels.js</code>. The Level Designer can create and test simple custom levels.</p>
-        <p>Difficulty changes enemy HP and speed. Easy is 50%, Normal 100%, Hard 150%, Insane 200%, Ultra 300%, and Nightmare rolls between 400% and 575% at the start of every level.</p>
-        <p>Endless picks a random built-in level, moves to another random level after each clear, and keeps going until you lose. It uses your last selected difficulty.</p>
+        <p>Place at least 2 units, then press READY! once. Every later wave starts by itself after a 3-second break.</p>
+        <p>Use the arrows beside the unit bar to change pages. Click a placed unit to inspect it or sell it for 70% of its price.</p>
+        <p><b>PING</b> fires quickly. <b>CRASH</b> has splash damage. <b>NULL</b> slows enemies. <b>ALONEWOOD</b> has huge range and low damage. <b>BLUESCREEN</b> fires a piercing railgun every 7 seconds.</p>
+        <p><b>INFICOOKIE</b> is cheap rapid fire. <b>BLEEDBOT</b> causes damage over time. <b>PUMPKILLER</b> is a short-range heavy hitter. <b>LOBBER NINJA</b> throws long-range splash shots.</p>
+        <p>The battlefield stays at a 960×600 ratio and scales without stretching.</p>
+        <p>Difficulty mostly changes enemy HP. Higher difficulties also increase speed a little. Nightmare rolls its HP and speed multipliers when the level starts.</p>
+        <p>Endless keeps one map for the whole run and pulls waves from World 1. Later level waves enter the pool as the run gets longer.</p>
       </div>
     </section>
 
@@ -98,6 +99,11 @@
         <canvas id="gameCanvas" width="960" height="600"></canvas>
         <div id="screenFlash" class="screen-flash"></div>
         <div id="toast" class="toast"></div>
+        <div id="unitPanel" class="unit-panel hidden">
+          <div><strong id="unitPanelName">PING</strong><small id="unitPanelStats"></small></div>
+          <button id="sellUnitBtn">SELL $0</button>
+          <button id="closeUnitPanelBtn" aria-label="Close">×</button>
+        </div>
         <div id="resultOverlay" class="result-overlay hidden">
           <div class="result-card">
             <p class="eyebrow" id="resultEyebrow">RESULT</p>
@@ -112,7 +118,12 @@
       </div>
 
       <div class="control-panel">
-        <div id="towerButtons" class="tower-buttons"></div>
+        <div class="unit-browser">
+          <button id="prevTowerPage" class="page-btn">‹</button>
+          <div id="towerButtons" class="tower-buttons"></div>
+          <button id="nextTowerPage" class="page-btn">›</button>
+          <span id="towerPageText" class="tower-page-text">1/1</span>
+        </div>
         <button id="waveBtn" class="wave-btn" disabled>READY!</button>
       </div>
     </section>
