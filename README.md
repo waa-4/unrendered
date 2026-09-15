@@ -1,4 +1,4 @@
-# Unrendered v0.0.9
+# Unrendered v0.0.10
 
 GitHub Pages-ready tower defence game. Upload the contents of this folder to a repository and enable GitHub Pages.
 
@@ -19,3 +19,12 @@ GitHub Pages-ready tower defence game. Upload the contents of this folder to a r
 - Improved responsive/mobile layout.
 
 Level data remains in `levels.js` for editing, but that developer note is no longer shown in the game UI.
+
+
+## 0.0.10 hotfix
+- Fixed portrait result screens clipping inside the battlefield.
+- Portrait mode now uses the full screen width for the battlefield and scrolls cleanly instead of shrinking everything until controls disappear.
+- Unit buttons reflow into a 2-column mobile layout so tower choices stay reachable.
+- Fixed Splitter descendants recursively splitting forever, a likely cause of late Endless freezes.
+- Added conservative caps for temporary particles, damage text, shockwaves, and railgun beams during very long runs.
+- Re-fits the arena after phone orientation changes.
